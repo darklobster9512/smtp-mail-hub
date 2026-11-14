@@ -10,10 +10,11 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-// Dev server runs on Node, which has no `cloudflare:sockets`. Swap in a Node shim (serve only).
+// Dev server runs on Node, which has no `cloudflare:sockets`. Swap in a Node shim (serve + development builds).
 const devSocketsShim = {
   name: "dev-cloudflare-sockets-shim",
-  apply: "serve" as const,
+  // Also for development-mode builds (Node-based preview); production builds keep workerd's native module.
+  apply: (_c: unknown, env: { command: string; mode: string }) => env.command === "serve" || env.mode === "development",
   enforce: "pre" as const,
   resolveId(id: string) {
     if (id === "cloudflare:sockets") return fileURLToPath(new URL("./src/dev/cloudflare-sockets-shim.ts", import.meta.url));
