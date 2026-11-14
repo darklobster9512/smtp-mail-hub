@@ -7,7 +7,20 @@
 // the build fails. Never add compression (compressPublicAssets, vite-plugin-compression):
 // hosting already compresses at the edge.
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+
+// Dev server runs on Node, which has no `cloudflare:sockets`. Swap in a Node shim (serve only).
+const devSocketsShim = {
+  name: "dev-cloudflare-sockets-shim",
+  apply: "serve" as const,
+  enforce: "pre" as const,
+  config: () => ({ ssr: { noExternal: ["worker-mailer"] } }),
+  resolveId(id: string) {
+    if (id === "cloudflare:sockets") return fileURLToPath(new URL("./src/dev/cloudflare-sockets-shim.ts", import.meta.url));
+    return null;
+  },
+};
 
 export default defineConfig({
   tanstackStart: {
@@ -15,4 +28,5 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: { plugins: [devSocketsShim] },
 });
