@@ -30,7 +30,7 @@ export function AdminSidebar() {
             <SidebarMenu>
               {items.map((i) => (
                 <SidebarMenuItem key={i.url}>
-                  <SidebarMenuButton asChild isActive={path === i.url} tooltip={i.title}>
+                  <SidebarMenuButton asChild isActive={path === i.url || path.startsWith(i.url + "/")} tooltip={i.title}>
                     <Link to={i.url}>
                       <i.icon className="h-4 w-4" />
                       <span>{i.title}</span>

@@ -34,3 +34,4 @@ use the editor.
 - Admin area lives under `src/routes/_authenticated/admin.*`; the `_authenticated` gate is client-only (session in localStorage). Data access is admin-only via `has_role()` RLS; first signup becomes admin via DB trigger.
 - `smtp_accounts.password` has no SELECT grant for `authenticated`; only server code (service role) may read it.
 - Server-side SMTP uses `worker-mailer` (cloudflare:sockets) inside createServerFn handlers, not Supabase Edge Functions (edge functions block port 587; nodemailer is Node-only). Bearer token attached via `src/lib/auth-attacher.ts` in start.ts.
+- Campaign sending runs in `src/lib/campaign-sender.server.ts` (`runTick`, ~40s budget, 1 mail/s, global DB lock). Triggered by the open campaign detail page or an external scheduler POSTing `/api/public/campaign-tick` with `x-cron-secret`; no pg_cron HTTP callbacks for user-managed Supabase.

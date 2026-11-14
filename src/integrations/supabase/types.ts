@@ -37,31 +37,40 @@ export type Database = {
       }
       campaign_recipients: {
         Row: {
+          anrede: string | null
           campaign_id: string
           created_at: string
           email: string
           error: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           sent_at: string | null
           smtp_account_used: string | null
           status: string
         }
         Insert: {
+          anrede?: string | null
           campaign_id: string
           created_at?: string
           email: string
           error?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           sent_at?: string | null
           smtp_account_used?: string | null
           status?: string
         }
         Update: {
+          anrede?: string | null
           campaign_id?: string
           created_at?: string
           email?: string
           error?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           sent_at?: string | null
           smtp_account_used?: string | null
           status?: string
@@ -90,8 +99,11 @@ export type Database = {
           finished_at: string | null
           html_content: string | null
           id: string
+          last_error: string | null
           name: string
+          rr_index: number
           sent: number
+          smtp_account_ids: string[]
           started_at: string | null
           status: string
           subject: string | null
@@ -103,8 +115,11 @@ export type Database = {
           finished_at?: string | null
           html_content?: string | null
           id?: string
+          last_error?: string | null
           name: string
+          rr_index?: number
           sent?: number
+          smtp_account_ids?: string[]
           started_at?: string | null
           status?: string
           subject?: string | null
@@ -116,8 +131,11 @@ export type Database = {
           finished_at?: string | null
           html_content?: string | null
           id?: string
+          last_error?: string | null
           name?: string
+          rr_index?: number
           sent?: number
+          smtp_account_ids?: string[]
           started_at?: string | null
           status?: string
           subject?: string | null
@@ -308,6 +326,7 @@ export type Database = {
     }
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
+      claim_sender_lock: { Args: { _ttl_seconds: number }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -315,6 +334,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_sender_lock: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export function PageHeader({ title, description }: { title: string; description?: string }) {
+export function PageHeader({ title, description }: { title: string; description?: string | undefined }) {
   return (
     <div className="mb-6">
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
@@ -30,11 +30,15 @@ export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNo
   );
 }
 
+const BADGE: Record<string, string> = {
+  active: "bg-primary/15 text-primary", sent: "bg-primary/15 text-primary", done: "bg-primary/15 text-primary",
+  failed: "bg-destructive/15 text-destructive", error: "bg-destructive/15 text-destructive", blocked: "bg-destructive/15 text-destructive", disabled: "bg-destructive/15 text-destructive",
+  sending: "bg-chart-3/15 text-chart-3", aborted: "bg-chart-4/15 text-chart-4",
+};
+
 export function StatusBadge({ value }: { value: string }) {
-  const ok = ["active", "sent", "finished", "done"].includes(value);
-  const bad = ["failed", "error", "disabled", "blocked"].includes(value);
   return (
-    <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${ok ? "bg-primary/15 text-primary" : bad ? "bg-destructive/15 text-destructive" : "bg-secondary text-muted-foreground"}`}>
+    <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${BADGE[value] ?? "bg-secondary text-muted-foreground"}`}>
       {value}
     </span>
   );
