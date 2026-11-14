@@ -102,7 +102,7 @@ export function AccountDialog({ open, onOpenChange, account, onSaved }: {
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="provider">Typ</Label>
-            <select id="provider" {...register("provider")} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+            <select id="provider" {...register("provider")} className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 text-sm [&>option]:bg-background [&>option]:text-foreground">
               <option value="smtp">SMTP</option>
               <option value="resend">Resend API</option>
             </select>
@@ -128,7 +128,7 @@ export function AccountDialog({ open, onOpenChange, account, onSaved }: {
           {isEdit && (
             <div className="space-y-1.5">
               <Label htmlFor="status">Status</Label>
-              <select id="status" {...register("status")} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+              <select id="status" {...register("status")} className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 text-sm [&>option]:bg-background [&>option]:text-foreground">
                 <option value="active">active</option>
                 <option value="blocked">blocked</option>
               </select>
