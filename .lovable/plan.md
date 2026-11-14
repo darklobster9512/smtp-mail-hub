@@ -3,11 +3,16 @@
 ## Was der „Ingest Key“ ist
 Ein Passwort, das ein fremdes System beim Senden eines Leads mitschicken muss. Ohne Passwort könnte jeder im Internet Adressen an die Schnittstelle schicken, und deine Konten würden an diese Empfänger Mails senden. Das führt zu Spam-Vorwürfen und gesperrten Konten.
 
-## Abweichung von deiner Vorgabe: Link statt Header-Key
-Eine Schnittstelle völlig ohne Schutz baue ich nicht. Stattdessen steckt das Geheimnis **im Link selbst**. Du kopierst eine einzige Adresse, brauchst weder Header noch Secret, und das externe System ruft sie einfach per POST auf. Wer den Link nicht kennt, kann keine Leads einliefern. Per Knopf erzeugst du einen neuen Link, falls er je durchsickert.
+## Öffentlich ohne Key, wie gewünscht
+Die Schnittstelle ist komplett offen: kein Key, kein Token, kein Header. Es reicht die Adresse.
+**Risiko:** Jeder, der die Adresse kennt, kann Leads einliefern, und deine Konten schreiben diese Adressen an. Das ist so wie bei einem öffentlichen Anmeldeformular. Schutz ohne Geheimnis:
+- Doppelte Adressen werden nie zweimal angeschrieben.
+- Pro Aufruf sind höchstens 100 Leads erlaubt.
+- Die Tageslimits der Konten gelten weiterhin.
+- Die Automatik lässt sich jederzeit unter Leads ausschalten. Dann wird nichts gesendet.
 
 ## Was gebaut wird
-1. **Supabase-Funktion `leads-ingest`** auf deinem Supabase-Projekt, Adresse: `https://htghprryiftbjfgieyag.supabase.co/functions/v1/leads-ingest?t=DEIN_TOKEN`. Sie ist öffentlich aufrufbar, prüft aber den Token im Link.
+1. **Supabase-Funktion `leads-ingest`** auf deinem Supabase-Projekt, Adresse: `https://htghprryiftbjfgieyag.supabase.co/functions/v1/leads-ingest`, öffentlich ohne Key.
 2. **Ablauf, sobald ein Lead eintrifft:**
    - Der Lead wird geprüft und mit Sendezeitpunkt „jetzt + Verzögerung“ gespeichert. Ist der Mindest-Abstand zum vorigen Lead noch nicht erreicht, wird der Zeitpunkt entsprechend verschoben.
    - Die Funktion antwortet sofort mit 201.
@@ -16,14 +21,14 @@ Eine Schnittstelle völlig ohne Schutz baue ich nicht. Stattdessen steckt das Ge
 4. **Schutz gegen Doppelversand:** Eine E-Mail-Adresse, die schon als Lead existiert, wird nicht noch einmal angeschrieben. Die Antwort lautet dann `duplicate: true`.
 5. **Sammel-Import:** Ein Aufruf darf einen Lead oder bis zu 100 Leads enthalten.
 6. **Automatisierung-Seite** bekommt eine Karte „Lead-Schnittstelle“ mit:
-   - dem fertigen Link (Kopieren-Knopf) und dem Knopf „Neuen Link erzeugen“
+   - dem fertigen Link (Kopieren-Knopf)
    - dem JSON-Format, Beispielaufruf, den Antworten und Fehlercodes
    - einem Test-Knopf
    - Die Karte „Externer Takt“ wird zu einer Notlösung, nur für sehr lange Verzögerungen.
 
 ## JSON-Format
 ```text
-POST https://htghprryiftbjfgieyag.supabase.co/functions/v1/leads-ingest?t=DEIN_TOKEN
+POST https://htghprryiftbjfgieyag.supabase.co/functions/v1/leads-ingest
 Content-Type: application/json
 
 Ein Lead:
@@ -33,7 +38,7 @@ Mehrere Leads:
 { "leads": [ { "email": "a@b.de" }, { "email": "c@d.de", "first_name": "Cora" } ] }
 
 Antwort 201: { "accepted": 1, "duplicates": 0, "scheduled_at": "2026-11-14T15:20:30Z" }
-Fehler: 401 Link falsch, 400 ungültiges JSON oder ungültige E-Mail, 413 mehr als 100 Leads
+Fehler: 400 ungültiges JSON oder ungültige E-Mail, 413 mehr als 100 Leads
 ```
 Pflicht ist nur `email`. `first_name`, `last_name` und `source` sind optional. Die Felder werden für `{first_name}`, `{last_name}` und `{anrede}` in der Vorlage genutzt.
 
@@ -45,10 +50,11 @@ Pflicht ist nur `email`. `first_name`, `last_name` und `source` sind optional. D
 
 ## Technische Details
 - Migration:
-  - `admin_settings`-Zeilen `leads_ingest_token` (zufällig, 40 Zeichen) und `app_base_url`; nur Admin lesbar/schreibbar wie bisher.
+  - `admin_settings`-Zeile `app_base_url`; nur Admin lesbar/schreibbar wie bisher.
   - SQL-Funktion `ingest_leads(jsonb)` (nur service_role): Dedupe, Slot = `greatest(now()+delay, letzter geplanter Slot + gap)`, Advisory-Lock gegen parallele Aufrufe, gibt Zählung und `scheduled_at` zurück.
-- `supabase/functions/leads-ingest/index.ts` (Deno): CORS, Token-Vergleich zeitkonstant, Zod-Validierung, `EdgeRuntime.waitUntil` mit Wartezeit bis `scheduled_at` (max. 120 s), dann `POST {app_base_url}/api/public/leads-send`. `verify_jwt = false` in `supabase/config.toml`.
+- `supabase/functions/leads-ingest/index.ts` (Deno): CORS, ohne Authentifizierung, Zod-Validierung, `EdgeRuntime.waitUntil` mit Wartezeit bis `scheduled_at` (max. 120 s), dann `POST {app_base_url}/api/public/leads-send`. `verify_jwt = false` in `supabase/config.toml`.
 - `src/routes/api/public/leads-send.ts`: ruft `runLeadsTick()` auf, ohne Eingabedaten, antwortet nur mit Zahlen.
-- Entfernt: alte Route `/api/public/leads-ingest` mit `x-ingest-key`, `LEADS_INGEST_KEY`-Anzeige und der darauf basierende Test-Knopf; Test-Knopf ruft den neuen Link auf. `handleIngest`-Tests werden auf die neue Regel umgestellt (Schlüssel falsch → 401, Sendezeit = jetzt + Verzögerung, Abstand, Duplikat).
-- UI: neue Karte in `admin.automation.tsx`, Token-Erzeugung per Browser-Client (Admin-RLS).
-- Prüfung: Funktion per curl mit falschem und richtigem Token aufrufen und Leads-Tabelle prüfen, soweit das Projekt es zulässt.
+- Entfernt: alte Route `/api/public/leads-ingest` mit `x-ingest-key`, `LEADS_INGEST_KEY`-Anzeige und der darauf basierende Test-Knopf; Test-Knopf ruft den neuen Link auf. `handleIngest`-Tests werden auf die neue Regel umgestellt (ohne Key → 201, Sendezeit = jetzt + Verzögerung, Abstand, Duplikat).
+- UI: neue Karte in `admin.automation.tsx`.
+- `roadmap.md`: Aufgabe „Öffentliche Lead-Schnittstelle ohne Key“ ergänzen.
+- Prüfung: Funktion per curl ohne Key aufrufen und Leads-Tabelle prüfen, soweit das Projekt es zulässt.
