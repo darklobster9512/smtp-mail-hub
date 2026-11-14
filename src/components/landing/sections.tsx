@@ -1,4 +1,5 @@
 import { Activity, Ban, Check, Globe, Mail, Server, ShieldCheck, Webhook } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -15,8 +16,8 @@ export function Header() {
           <a href="#faq" className="hover:text-foreground">FAQ</a>
         </nav>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="ghost">Login</Button>
-          <Button size="sm">Registrieren</Button>
+          <Button asChild size="sm" variant="ghost"><Link to="/login">Login</Link></Button>
+          <Button asChild size="sm"><Link to="/login">Registrieren</Link></Button>
         </div>
       </div>
     </header>

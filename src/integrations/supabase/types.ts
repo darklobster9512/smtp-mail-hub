@@ -14,16 +14,310 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          email: string
+          error: string | null
+          id: string
+          sent_at: string | null
+          smtp_account_used: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          email: string
+          error?: string | null
+          id?: string
+          sent_at?: string | null
+          smtp_account_used?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          email?: string
+          error?: string | null
+          id?: string
+          sent_at?: string | null
+          smtp_account_used?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_smtp_account_used_fkey"
+            columns: ["smtp_account_used"]
+            isOneToOne: false
+            referencedRelation: "smtp_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          failed: number
+          finished_at: string | null
+          html_content: string | null
+          id: string
+          name: string
+          sent: number
+          started_at: string | null
+          status: string
+          subject: string | null
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          failed?: number
+          finished_at?: string | null
+          html_content?: string | null
+          id?: string
+          name: string
+          sent?: number
+          started_at?: string | null
+          status?: string
+          subject?: string | null
+          total?: number
+        }
+        Update: {
+          created_at?: string
+          failed?: number
+          finished_at?: string | null
+          html_content?: string | null
+          id?: string
+          name?: string
+          sent?: number
+          started_at?: string | null
+          status?: string
+          subject?: string | null
+          total?: number
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          email: string
+          error: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          smtp_account_used: string | null
+          source: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          email: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          smtp_account_used?: string | null
+          source?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          email?: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          smtp_account_used?: string | null
+          source?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_smtp_account_used_fkey"
+            columns: ["smtp_account_used"]
+            isOneToOne: false
+            referencedRelation: "smtp_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads_settings: {
+        Row: {
+          auto_campaign_enabled: boolean
+          delay_seconds: number
+          id: number
+          min_gap_seconds: number
+          template_key: string
+        }
+        Insert: {
+          auto_campaign_enabled?: boolean
+          delay_seconds?: number
+          id?: number
+          min_gap_seconds?: number
+          template_key?: string
+        }
+        Update: {
+          auto_campaign_enabled?: boolean
+          delay_seconds?: number
+          id?: number
+          min_gap_seconds?: number
+          template_key?: string
+        }
+        Relationships: []
+      }
+      mail_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          id: string
+          message: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      smtp_accounts: {
+        Row: {
+          created_at: string
+          daily_limit: number
+          from_email: string | null
+          from_name: string | null
+          host: string
+          id: string
+          klick_domain: string | null
+          label: string | null
+          password: string | null
+          port: number
+          sent_date: string | null
+          sent_today: number
+          status: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          daily_limit?: number
+          from_email?: string | null
+          from_name?: string | null
+          host: string
+          id?: string
+          klick_domain?: string | null
+          label?: string | null
+          password?: string | null
+          port?: number
+          sent_date?: string | null
+          sent_today?: number
+          status?: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          daily_limit?: number
+          from_email?: string | null
+          from_name?: string | null
+          host?: string
+          id?: string
+          klick_domain?: string | null
+          label?: string | null
+          password?: string | null
+          port?: number
+          sent_date?: string | null
+          sent_today?: number
+          status?: string
+          user_email?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_exists: { Args: never; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +444,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

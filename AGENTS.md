@@ -31,3 +31,5 @@ use the editor.
 
 ## Project rules
 - Landing page sections live in `src/components/landing/` and are composed in `src/routes/index.tsx`; keeps the route file small.
+- Admin area lives under `src/routes/_authenticated/admin.*`; the `_authenticated` gate is client-only (session in localStorage). Data access is admin-only via `has_role()` RLS; first signup becomes admin via DB trigger.
+- `smtp_accounts.password` has no SELECT grant for `authenticated`; only server code (service role) may read it.
