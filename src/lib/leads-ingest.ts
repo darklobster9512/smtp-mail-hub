@@ -1,33 +1,26 @@
-import { leadInputSchema } from "./leads-schema";
+import { leadInputSchema, type LeadInput } from "./leads-schema";
 
-function safeEqual(x: string, y: string) {
-  const a = new TextEncoder().encode(x), b = new TextEncoder().encode(y);
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
-  return diff === 0;
-}
+export const MAX_LEADS_PER_CALL = 100;
 
-export type IngestRow = { email: string; first_name: string | null; last_name: string | null; source: string; status: "scheduled"; scheduled_at: string };
-export type IngestDeps = {
-  key: string | undefined;
-  getDelaySeconds: () => Promise<number>;
-  insert: (row: IngestRow) => Promise<{ data: unknown; error: unknown }>;
-  now?: () => number;
-};
+export type IngestResult = { accepted: number; duplicates: number; scheduled_at: string | null };
+export type IngestDeps = { ingest: (leads: LeadInput[]) => Promise<{ data: IngestResult | null; error: unknown }> };
 
-/** Validates key + body; leads from the API are ALWAYS scheduled at now + delay. */
+/** Public, keyless intake. Accepts one lead object, an array, or { leads: [...] } (max 100). */
 export async function handleIngest(request: Request, deps: IngestDeps): Promise<Response> {
-  if (!deps.key || !safeEqual(request.headers.get("x-ingest-key") ?? "", deps.key)) return Response.json({ error: "Unauthorized" }, { status: 401 });
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ error: "Ungültiges JSON" }, { status: 400 }); }
-  const parsed = leadInputSchema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Ungültige Daten" }, { status: 400 });
-  const d = parsed.data;
-  const delay = await deps.getDelaySeconds();
-  const { data, error } = await deps.insert({
-    email: d.email.toLowerCase(), first_name: d.first_name || null, last_name: d.last_name || null, source: d.source || "api",
-    status: "scheduled", scheduled_at: new Date((deps.now ?? Date.now)() + delay * 1000).toISOString(),
-  });
-  if (error) return Response.json({ error: "Speichern fehlgeschlagen" }, { status: 500 });
-  return Response.json(data, { status: 201 });
+  const raw: unknown[] = Array.isArray(body) ? body
+    : body && typeof body === "object" && Array.isArray((body as { leads?: unknown }).leads) ? (body as { leads: unknown[] }).leads
+    : [body];
+  if (raw.length === 0) return Response.json({ error: "Keine Leads übergeben" }, { status: 400 });
+  if (raw.length > MAX_LEADS_PER_CALL) return Response.json({ error: `Höchstens ${MAX_LEADS_PER_CALL} Leads pro Aufruf` }, { status: 413 });
+  const leads: LeadInput[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const p = leadInputSchema.safeParse(raw[i]);
+    if (!p.success) return Response.json({ error: `${p.error.issues[0]?.message ?? "Ungültige Daten"}${raw.length > 1 ? ` (Eintrag ${i + 1})` : ""}` }, { status: 400 });
+    leads.push(p.data);
+  }
+  const { data, error } = await deps.ingest(leads);
+  if (error || !data) return Response.json({ error: "Speichern fehlgeschlagen" }, { status: 500 });
+  return Response.json({ ...data, duplicate: data.accepted === 0 && data.duplicates > 0 }, { status: 201 });
 }

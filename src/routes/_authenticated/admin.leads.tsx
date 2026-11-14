@@ -40,10 +40,10 @@ function Leads() {
   const { data: settings } = useLeadsSettings();
   const test = useServerFn(testIngest);
   const [testing, setTesting] = useState(false);
-  const [testRes, setTestRes] = useState<{ status: number; body: string; keySet: boolean } | null>(null);
+  const [testRes, setTestRes] = useState<{ status: number; body: string } | null>(null);
   async function runTest() {
     setTesting(true);
-    try { setTestRes(await test()); } catch (e) { setTestRes({ status: 0, body: e instanceof Error ? e.message : String(e), keySet: false }); }
+    try { setTestRes(await test()); } catch (e) { setTestRes({ status: 0, body: e instanceof Error ? e.message : String(e) }); }
     setTesting(false);
   }
 
@@ -97,8 +97,7 @@ function Leads() {
         <div className={`mb-4 rounded-lg border p-3 text-sm ${testRes.status === 201 ? "border-primary/40" : "border-destructive/40"}`}>
           <div className="font-medium">
             {testRes.status === 201 ? "✓ Schnittstelle läuft (201) – Test-Lead wurde angelegt und wieder entfernt."
-              : testRes.status === 401 ? `✗ 401 – ${testRes.keySet ? "Schlüssel stimmt nicht." : "LEADS_INGEST_KEY ist nicht hinterlegt."}`
-              : `✗ Status ${testRes.status || "keine Verbindung"}`}
+                           : `✗ Status ${testRes.status || "keine Verbindung"}`}
           </div>
           {testRes.status !== 201 && <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs text-muted-foreground">{testRes.body}</pre>}
         </div>

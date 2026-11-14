@@ -22,6 +22,7 @@ import { Route as AuthenticatedAdminOverviewRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminProxiesRouteImport } from './routes/_authenticated/admin.proxies'
 import { Route as ApiPublicCampaignTickRouteImport } from './routes/api/public/campaign-tick'
 import { Route as ApiPublicLeadsIngestRouteImport } from './routes/api/public/leads-ingest'
+import { Route as ApiPublicLeadsSendRouteImport } from './routes/api/public/leads-send'
 import { Route as AuthenticatedAdminCampaignsIndexRouteImport } from './routes/_authenticated/admin.campaigns.index'
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
 import { Route as AuthenticatedAdminCampaignsNewRouteImport } from './routes/_authenticated/admin.campaigns.new'
@@ -96,6 +97,11 @@ const ApiPublicLeadsIngestRoute = ApiPublicLeadsIngestRouteImport.update({
   path: '/api/public/leads-ingest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicLeadsSendRoute = ApiPublicLeadsSendRouteImport.update({
+  id: '/api/public/leads-send',
+  path: '/api/public/leads-send',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminCampaignsIndexRoute =
   AuthenticatedAdminCampaignsIndexRouteImport.update({
     id: '/',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/admin/proxies': typeof AuthenticatedAdminProxiesRoute
   '/api/public/campaign-tick': typeof ApiPublicCampaignTickRoute
   '/api/public/leads-ingest': typeof ApiPublicLeadsIngestRoute
+  '/api/public/leads-send': typeof ApiPublicLeadsSendRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRoute
   '/admin/campaigns/new': typeof AuthenticatedAdminCampaignsNewRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/admin/proxies': typeof AuthenticatedAdminProxiesRoute
   '/api/public/campaign-tick': typeof ApiPublicCampaignTickRoute
   '/api/public/leads-ingest': typeof ApiPublicLeadsIngestRoute
+  '/api/public/leads-send': typeof ApiPublicLeadsSendRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRoute
   '/admin/campaigns/new': typeof AuthenticatedAdminCampaignsNewRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/proxies': typeof AuthenticatedAdminProxiesRoute
   '/api/public/campaign-tick': typeof ApiPublicCampaignTickRoute
   '/api/public/leads-ingest': typeof ApiPublicLeadsIngestRoute
+  '/api/public/leads-send': typeof ApiPublicLeadsSendRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRoute
   '/_authenticated/admin/campaigns/new': typeof AuthenticatedAdminCampaignsNewRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/admin/proxies'
     | '/api/public/campaign-tick'
     | '/api/public/leads-ingest'
+    | '/api/public/leads-send'
     | '/admin/'
     | '/admin/campaigns/$id'
     | '/admin/campaigns/new'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/admin/proxies'
     | '/api/public/campaign-tick'
     | '/api/public/leads-ingest'
+    | '/api/public/leads-send'
     | '/admin'
     | '/admin/campaigns/$id'
     | '/admin/campaigns/new'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/proxies'
     | '/api/public/campaign-tick'
     | '/api/public/leads-ingest'
+    | '/api/public/leads-send'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
     | '/_authenticated/admin/campaigns/new'
@@ -237,6 +249,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ApiPublicCampaignTickRoute: typeof ApiPublicCampaignTickRoute
   ApiPublicLeadsIngestRoute: typeof ApiPublicLeadsIngestRoute
+  ApiPublicLeadsSendRoute: typeof ApiPublicLeadsSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/leads-ingest'
       fullPath: '/api/public/leads-ingest'
       preLoaderRoute: typeof ApiPublicLeadsIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/leads-send': {
+      id: '/api/public/leads-send'
+      path: '/api/public/leads-send'
+      fullPath: '/api/public/leads-send'
+      preLoaderRoute: typeof ApiPublicLeadsSendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/campaigns/': {
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ApiPublicCampaignTickRoute: ApiPublicCampaignTickRoute,
   ApiPublicLeadsIngestRoute: ApiPublicLeadsIngestRoute,
+  ApiPublicLeadsSendRoute: ApiPublicLeadsSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

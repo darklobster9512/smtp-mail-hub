@@ -8,3 +8,4 @@
 - [x] Takt im offenen Tab + curl-Vorlage
 - [x] Schlüssel-Status anzeigen
 - [x] Hilfe-Box E-Mail-Anmeldung
+- [x] Öffentliche Lead-Schnittstelle ohne Key (App-Adresse statt Supabase-Funktion, Sofort-Versand mit Verzögerung)

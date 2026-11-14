@@ -1,24 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { handleIngest } from "@/lib/leads-ingest";
 
-// Integration endpoint for external systems. Requires the shared key in `x-ingest-key`.
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "content-type" };
+
+// Public lead intake WITHOUT key (owner's explicit choice). Duplicates are skipped, max 100 per call.
+// After storing, it starts the sending chain (/api/public/leads-send) in the background — no cron needed.
 export const Route = createFileRoute("/api/public/leads-ingest")({
   server: {
     handlers: {
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
-        const key = process.env["LEADS_INGEST_KEY"];
-        return handleIngest(request, {
-          key,
-          getDelaySeconds: async () => {
+        const res = await handleIngest(request, {
+          ingest: async (leads) => {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            const { data } = await supabaseAdmin.from("leads_settings").select("delay_seconds").eq("id", 1).maybeSingle();
-            return data?.delay_seconds ?? 0;
-          },
-          insert: async (row) => {
-            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            return supabaseAdmin.from("leads").insert(row).select("id, status, scheduled_at").single();
+            const { data, error } = await supabaseAdmin.rpc("ingest_leads", { _leads: leads });
+            return { data: data as never, error };
           },
         });
+        if (res.status === 201) {
+          const { runInBackground } = await import("@/lib/background.server");
+          const origin = new URL(request.url).origin;
+          runInBackground(fetch(`${origin}/api/public/leads-send`, { method: "POST" }));
+        }
+        const out = new Response(res.body, res);
+        for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
+        return out;
       },
     },
   },

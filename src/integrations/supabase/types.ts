@@ -406,6 +406,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      ingest_leads: { Args: { _leads: Json }; Returns: Json }
       pick_mail_proxy: {
         Args: never
         Returns: {

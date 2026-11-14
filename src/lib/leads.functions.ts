@@ -49,34 +49,28 @@ export const getSecretStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    return { LEADS_INGEST_KEY: Boolean(process.env["LEADS_INGEST_KEY"]), CRON_SECRET: Boolean(process.env["CRON_SECRET"]) };
+    return { CRON_SECRET: Boolean(process.env["CRON_SECRET"]) };
   });
 
+/** Calls the public intake like an external system would, then removes the test lead again. */
 export const testIngest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const key = process.env["LEADS_INGEST_KEY"];
     const origin = new URL(getRequest().url).origin;
     const url = `${origin}/api/public/leads-ingest`;
+    const email = `integration-test+${Date.now()}@example.invalid`;
     try {
       const r = await fetch(url, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-ingest-key": key ?? "" },
-        body: JSON.stringify({ email: "integration-test@example.com", first_name: "Integration", last_name: "Test", source: "integration-test" }),
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, first_name: "Integration", last_name: "Test", source: "integration-test" }),
       });
       const text = (await r.text()).slice(0, 300);
-      if (r.status === 201) {
-        try {
-          const id = (JSON.parse(text) as { id?: string }).id;
-          if (id) {
-            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            await supabaseAdmin.from("leads").delete().eq("id", id);
-          }
-        } catch { /* ignore */ }
-      }
-      return { status: r.status, body: text, url, keySet: Boolean(key) };
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("leads").delete().eq("email", email);
+      return { status: r.status, body: text, url };
     } catch (e) {
-      return { status: 0, body: e instanceof Error ? e.message : String(e), url, keySet: Boolean(key) };
+      return { status: 0, body: e instanceof Error ? e.message : String(e), url };
     }
   });

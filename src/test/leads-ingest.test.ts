@@ -1,24 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { handleIngest, type IngestRow } from "@/lib/leads-ingest";
+import { handleIngest, type IngestDeps } from "@/lib/leads-ingest";
+import type { LeadInput } from "@/lib/leads-schema";
 
-const req = (body: unknown, key?: string) => new Request("http://x/api/public/leads-ingest", {
-  method: "POST", body: JSON.stringify(body), headers: key ? { "x-ingest-key": key } : {},
-});
+const req = (body: unknown) => new Request("http://x/api/public/leads-ingest", { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) });
+const ok = (seen: LeadInput[][] = []): IngestDeps => ({ ingest: async (l) => { seen.push(l); return { data: { accepted: l.length, duplicates: 0, scheduled_at: "t" }, error: null }; } });
 
-describe("leads-ingest", () => {
-  it("ohne Schlüssel → 401", async () => {
-    const r = await handleIngest(req({ email: "a@b.de" }), { key: "k", getDelaySeconds: async () => 30, insert: async () => ({ data: {}, error: null }) });
-    expect(r.status).toBe(401);
+describe("leads-ingest (öffentlich, ohne Key)", () => {
+  it("ohne Key → 201", async () => expect((await handleIngest(req({ email: "a@b.de" }), ok())).status).toBe(201));
+  it("mehrere Leads über { leads: [...] }", async () => {
+    const seen: LeadInput[][] = [];
+    await handleIngest(req({ leads: [{ email: "a@b.de" }, { email: "c@d.de", first_name: "Cora" }] }), ok(seen));
+    expect(seen[0]).toHaveLength(2);
   });
-  it("gültiger Lead → scheduled, jetzt + Verzögerung", async () => {
-    let row: IngestRow | null = null;
-    const r = await handleIngest(req({ email: "A@b.de", first_name: "Max" }, "k"), {
-      key: "k", getDelaySeconds: async () => 30, now: () => 1_000_000,
-      insert: async (x) => { row = x; return { data: { id: 1 }, error: null }; },
-    });
-    expect(r.status).toBe(201);
-    expect(row!.status).toBe("scheduled");
-    expect(row!.scheduled_at).toBe(new Date(1_030_000).toISOString());
-    expect(row!.email).toBe("a@b.de");
+  it("mehr als 100 Leads → 413", async () => {
+    const r = await handleIngest(req(Array.from({ length: 101 }, (_, i) => ({ email: `x${i}@b.de` }))), ok());
+    expect(r.status).toBe(413);
+  });
+  it("ungültige E-Mail → 400", async () => expect((await handleIngest(req({ email: "nope" }), ok())).status).toBe(400));
+  it("ungültiges JSON → 400", async () => expect((await handleIngest(req("{"), ok())).status).toBe(400));
+  it("nur Duplikate → duplicate: true", async () => {
+    const r = await handleIngest(req({ email: "a@b.de" }), { ingest: async () => ({ data: { accepted: 0, duplicates: 1, scheduled_at: null }, error: null }) });
+    expect((await r.json()).duplicate).toBe(true);
   });
 });
