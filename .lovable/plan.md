@@ -5,6 +5,13 @@ Die Meldung "Proxy-Tunnel abgelehnt: Verbindung nicht erlaubt" kommt direkt vom 
 
 Sehr wahrscheinlich sperrt der Anbieter SMTP-Ports. Das ist bei Residential-/Rotating-Proxys üblich, um Spam zu verhindern. Das ist noch nicht bestätigt: Ich konnte ihn nicht mit deinen Zugangsdaten testen. Der Fehler liegt damit mit hoher Wahrscheinlichkeit nicht im App-Code, und die App kann ihn nicht umgehen. Der Exit-IP-Test läuft über Port 443 und kann deshalb trotzdem grün sein.
 
+## Was die Proxied-Dokumentation dazu sagt
+Ich habe die Client-API-Dokumentation und die OpenAPI-Beschreibung von Proxied gelesen. Sie beschreibt Kauf, Zugangsdaten, Rotation und je Abo einen HTTP(S)-Port und einen SOCKS5-Port. Zu SMTP, Mailports oder gesperrten Zielports steht dort nichts. Die Dokumentation bestätigt also weder, dass SMTP erlaubt ist, noch, dass es gesperrt ist. Die Ablehnung kommt vom Proxy selbst, und wie viele Anbieter sperrt auch er vermutlich Mailports, wenn nichts anderes freigeschaltet ist. Das lässt sich nur mit einem Test oder einer Anfrage beim Proxied-Support klären.
+
+Was du ohne Änderung ausprobieren kannst:
+- Lege denselben Zugang noch einmal mit dem HTTP(S)-Port statt dem SOCKS5-Port an (`http://...`). Manche Anbieter haben für beide Wege unterschiedliche Regeln.
+- Frage bei Proxied nach, ob die Zielports 465 und 587 für dein Abo freigeschaltet werden können.
+
 ## Geplante Änderungen
 1. **SMTP-Test je Proxy:** Neben "Exit-IP testen" kommt ein Knopf "SMTP-Port testen". Er öffnet über den Proxy nur eine Verbindung zum Mailserver des gewählten SMTP-Kontos, ohne Anmeldung und ohne Mail, und liest den Server-Gruß. So siehst du vor dem Versand, ob der Anbieter Port 465/587 durchlässt.
 2. **Klarere Fehlermeldung:** Bei dem Fehler "Verbindung nicht erlaubt" oder HTTP 403 zeigt die App einen Hinweis. Er sagt, dass der Proxy-Anbieter diesen SMTP-Port blockiert, und dass du bei ihm SMTP freischalten lassen oder einen Proxy-Typ ohne SMTP-Sperre nehmen musst (zum Beispiel dedizierte oder ISP-Proxys).
