@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
-import { PageHeader, fmtDate } from "@/components/admin/ui";
+import { PageHeader, Panel, StatCard as Card, StatusBadge, fmtDate } from "@/components/admin/ui";
+import { Activity, Mail, Megaphone, Percent, Send, Users } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getDashboardStats } from "@/lib/dashboard.functions";
@@ -12,25 +14,15 @@ export const Route = createFileRoute("/_authenticated/admin/overview")({
   head: () => ({ meta: [{ title: "Übersicht – Postwerk Admin" }] }),
   loader: ({ context }) => { context.queryClient.ensureQueryData(statsQuery); },
   component: Overview,
+  pendingComponent: OverviewSkeleton,
   errorComponent: ({ error }) => <p className="text-destructive">{error instanceof Error ? error.message : String(error)}</p>,
 });
 
 const LEAD_LABEL: Record<string, string> = { new: "neu", scheduled: "geplant", sent: "gesendet", failed: "fehlgeschlagen" };
 const LEAD_COLOR: Record<string, string> = { new: "var(--muted-foreground)", scheduled: "var(--secondary-foreground)", sent: "var(--primary)", failed: "var(--destructive)" };
-const LOG_BADGE: Record<string, string> = { info: "bg-chart-2/15 text-chart-2", warning: "bg-chart-4/15 text-chart-4", error: "bg-destructive/15 text-destructive" };
 
 const barConfig = { count: { label: "Mails", color: "var(--primary)" } } satisfies ChartConfig;
 const pieConfig = Object.fromEntries(Object.entries(LEAD_LABEL).map(([k, v]) => [k, { label: v, color: LEAD_COLOR[k] ?? "" }])) as ChartConfig;
-
-function Card({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string | undefined }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="mt-2 text-3xl font-semibold">{value}</div>
-      {sub && <div className="mt-1 truncate text-xs text-muted-foreground">{sub}</div>}
-    </div>
-  );
-}
 
 function Overview() {
   const { data: s } = useSuspenseQuery(statsQuery);
@@ -38,23 +30,22 @@ function Overview() {
   const pie = s.leadStatus.filter((l) => l.count > 0).map((l) => ({ ...l, fill: LEAD_COLOR[l.status] }));
   return (
     <>
-      <PageHeader title="Übersicht" />
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <PageHeader title="Übersicht" description="Versandleistung, Leads und Systemaktivität auf einen Blick." />
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger asChild><div><Card label="SMTP-Konten" value={`${s.accounts.active} / ${s.accounts.total}`} sub="aktiv / gesamt" /></div></TooltipTrigger>
+            <TooltipTrigger asChild><div><Card label="SMTP-Konten" value={`${s.accounts.active} / ${s.accounts.total}`} sub="aktiv / gesamt" icon={Mail} /></div></TooltipTrigger>
             <TooltipContent>{s.accounts.blocked} gesperrt</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <Card label="Kampagnen" value={`${s.campaigns.done} / ${s.campaigns.started}`} sub="fertig / gestartet" />
-        <Card label="Leads gesamt" value={s.leadsTotal} />
-        <Card label="Mails heute" value={s.sentToday} sub="aktive Konten" />
-        <Card label="Erfolgsquote" value={s.lastCampaign?.rate != null ? `${s.lastCampaign.rate.toLocaleString("de-DE")} %` : "–"} sub={s.lastCampaign?.name ?? "noch keine Kampagne"} />
+        <Card label="Kampagnen" value={`${s.campaigns.done} / ${s.campaigns.started}`} sub="fertig / gestartet" icon={Megaphone} />
+        <Card label="Leads gesamt" value={s.leadsTotal} sub="alle Quellen" icon={Users} />
+        <Card label="Mails heute" value={s.sentToday} sub="aktive Konten" icon={Send} />
+        <Card label="Erfolgsquote" value={s.lastCampaign?.rate != null ? `${s.lastCampaign.rate.toLocaleString("de-DE")} %` : "–"} sub={s.lastCampaign?.name ?? "noch keine Kampagne"} icon={Percent} />
       </div>
 
-      <div className="mb-8 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
-          <h2 className="mb-4 font-semibold">Mails pro Tag (14 Tage)</h2>
+      <div className="mb-6 grid gap-3 lg:grid-cols-3">
+        <Panel title="Mails pro Tag" sub="Kampagnen und Auto-Leads, letzte 14 Tage" className="lg:col-span-2">
           <ChartContainer config={barConfig} className="h-64 w-full">
             <BarChart data={days}>
               <CartesianGrid vertical={false} />
@@ -64,9 +55,8 @@ function Overview() {
               <Bar dataKey="count" fill="var(--color-count)" radius={4} />
             </BarChart>
           </ChartContainer>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-4 font-semibold">Leads nach Status</h2>
+        </Panel>
+        <Panel title="Leads nach Status" sub="Aktuelle Verteilung">
           {pie.length === 0 ? <p className="py-20 text-center text-sm text-muted-foreground">Noch keine Leads.</p> : (
             <ChartContainer config={pieConfig} className="mx-auto h-48">
               <PieChart>
@@ -85,20 +75,36 @@ function Overview() {
               </li>
             ))}
           </ul>
-        </div>
+        </Panel>
       </div>
 
-      <h2 className="mb-3 font-semibold">Aktivitäten</h2>
-      <div className="divide-y divide-border rounded-xl border border-border bg-card">
+      <section className="rounded-lg border border-border bg-card">
+        <header className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <Activity className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Aktivitäten</h2>
+          <span className="ml-auto text-xs text-muted-foreground">letzte 10 Einträge</span>
+        </header>
         {s.logs.length === 0 && <p className="p-5 text-sm text-muted-foreground">Noch keine Logeinträge.</p>}
-        {s.logs.map((l) => (
-          <div key={l.id} className="flex items-start gap-4 px-5 py-3 text-sm">
-            <span className="w-40 shrink-0 text-muted-foreground">{fmtDate(l.created_at)}</span>
-            <span className={`w-16 shrink-0 rounded-md px-2 py-0.5 text-center text-xs font-medium ${LOG_BADGE[l.type] ?? "bg-secondary text-muted-foreground"}`}>{l.type}</span>
-            <span className="min-w-0 break-words">{l.message}</span>
-          </div>
-        ))}
-      </div>
+        <div className="divide-y divide-border">
+          {s.logs.map((l) => (
+            <div key={l.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-sm hover:bg-row-hover">
+              <span className="w-36 shrink-0 text-xs tabular-nums text-muted-foreground">{fmtDate(l.created_at)}</span>
+              <span className="w-20 shrink-0"><StatusBadge value={l.type} /></span>
+              <span className="min-w-0 flex-1 break-words">{l.message}</span>
+            </div>
+          ))}
+        </div>
+      </section>
     </>
+  );
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-28" />)}</div>
+      <div className="grid gap-3 lg:grid-cols-3"><Skeleton className="h-80 lg:col-span-2" /><Skeleton className="h-80" /></div>
+    </div>
   );
 }

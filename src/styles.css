@@ -30,6 +30,9 @@
  */
 
 @theme inline {
+  --color-table-head: var(--table-head);
+  --color-row-hover: var(--row-hover);
+  --color-canvas: var(--canvas);
   --font-sans: "Inter Tight", ui-sans-serif, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --shadow-glow: var(--shadow-glow);
@@ -77,8 +80,11 @@
 
 :root {
   color-scheme: dark;
-  --radius: 0.75rem;
+  --radius: 0.6rem;
   --background: oklch(0.12 0.005 280);
+  --table-head: oklch(0.16 0.005 280);
+  --row-hover: oklch(0.2 0.006 280);
+  --canvas: oklch(0.105 0.004 280);
   --foreground: oklch(0.97 0 0);
   --card: oklch(0.18 0.006 280);
   --card-foreground: oklch(0.97 0 0);
