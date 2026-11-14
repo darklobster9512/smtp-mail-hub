@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DataTable, PageHeader, fmtDate } from "@/components/admin/ui";
 import { SettingsPanel, useLeadsSettings } from "@/components/admin/leads/SettingsPanel";
 import { LeadDialog } from "@/components/admin/leads/LeadDialog";
-import { runLeadsTickFn } from "@/lib/leads.functions";
+import { testIngest } from "@/lib/leads.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/leads")({
   head: () => ({ meta: [{ title: "Leads – Postwerk Admin" }] }),
@@ -38,7 +38,14 @@ function Leads() {
   const [range, setRange] = useState<Range>("all");
   const [open, setOpen] = useState(false);
   const { data: settings } = useLeadsSettings();
-  const tick = useServerFn(runLeadsTickFn);
+  const test = useServerFn(testIngest);
+  const [testing, setTesting] = useState(false);
+  const [testRes, setTestRes] = useState<{ status: number; body: string; keySet: boolean } | null>(null);
+  async function runTest() {
+    setTesting(true);
+    try { setTestRes(await test()); } catch (e) { setTestRes({ status: 0, body: e instanceof Error ? e.message : String(e), keySet: false }); }
+    setTesting(false);
+  }
 
   const { data } = useQuery({
     queryKey: ["leads", page, range],
@@ -64,19 +71,6 @@ function Leads() {
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
-  // While this page is open, drive the auto-send of due leads.
-  useEffect(() => {
-    let stop = false;
-    const loop = async () => {
-      while (!stop) {
-        try { const r = await tick(); if (r.sent || r.failed) { qc.invalidateQueries({ queryKey: ["leads"] }); qc.invalidateQueries({ queryKey: ["leads-stats"] }); } } catch { /* ignore */ }
-        await new Promise((res) => setTimeout(res, 20000));
-      }
-    };
-    loop();
-    return () => { stop = true; };
-  }, [tick, qc]);
-
   const rows = data?.rows ?? [];
   const pages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE));
   const refresh = () => { qc.invalidateQueries({ queryKey: ["leads"] }); qc.invalidateQueries({ queryKey: ["leads-stats"] }); };
@@ -94,8 +88,21 @@ function Leads() {
             <SelectItem value="all">Alle</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Lead hinzufügen</Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" disabled={testing} onClick={runTest}>{testing ? "Teste…" : "Schnittstelle testen"}</Button>
+          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Lead hinzufügen</Button>
+        </div>
       </div>
+      {testRes && (
+        <div className={`mb-4 rounded-lg border p-3 text-sm ${testRes.status === 201 ? "border-primary/40" : "border-destructive/40"}`}>
+          <div className="font-medium">
+            {testRes.status === 201 ? "✓ Schnittstelle läuft (201) – Test-Lead wurde angelegt und wieder entfernt."
+              : testRes.status === 401 ? `✗ 401 – ${testRes.keySet ? "Schlüssel stimmt nicht." : "LEADS_INGEST_KEY ist nicht hinterlegt."}`
+              : `✗ Status ${testRes.status || "keine Verbindung"}`}
+          </div>
+          {testRes.status !== 201 && <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs text-muted-foreground">{testRes.body}</pre>}
+        </div>
+      )}
       <DataTable
         head={["E-Mail", "Vorname", "Nachname", "Quelle", "Status", "Erstellt"]}
         empty="Keine Leads im gewählten Zeitraum."

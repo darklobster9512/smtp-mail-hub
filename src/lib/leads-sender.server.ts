@@ -19,6 +19,7 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
     while (Date.now() - started < budgetMs) {
       const { data: s } = await supabaseAdmin.from("leads_settings").select("*").eq("id", 1).maybeSingle();
       if (!s) { res.reason = "no-settings"; break; }
+      if (!s.auto_campaign_enabled) { res.reason = "disabled"; break; }
       const gapMs = s.min_gap_seconds * 1000;
       const last = s.last_auto_sent_at ? new Date(s.last_auto_sent_at).getTime() : 0;
       const waitMs = last + gapMs - Date.now();

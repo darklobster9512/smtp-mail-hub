@@ -62,7 +62,8 @@ export function SettingsPanel() {
     setBusy(true);
     try {
       const r = await sendNow();
-      if (!r.ran) toast.info("Versand läuft bereits – bitte gleich erneut versuchen.");
+      if (r.reason === "disabled") toast.info("Automatik ist ausgeschaltet – geplante Leads warten.");
+      else if (!r.ran) toast.info("Versand läuft bereits – bitte gleich erneut versuchen.");
       else toast.success(`${r.sent} gesendet, ${r.failed} fehlgeschlagen${r.reason === "gap" ? " (Mindest-Abstand – Rest folgt)" : r.reason === "no-account" ? " (kein Konto frei)" : ""}`);
       qc.invalidateQueries({ queryKey: ["leads"] }); qc.invalidateQueries({ queryKey: ["leads-stats"] });
     } catch (e) { notifyError(e, "Fehler"); }

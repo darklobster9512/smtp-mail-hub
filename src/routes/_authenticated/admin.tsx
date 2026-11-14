@@ -1,6 +1,9 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/notify";
 import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect } from "react";
+import { runBackgroundTick } from "@/lib/leads.functions";
 import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +34,28 @@ function AdminLayout() {
   const { user } = Route.useRouteContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  const tick = useServerFn(runBackgroundTick);
+  // Background sending while the panel is open: one step per minute (DB lock prevents overlaps).
+  useEffect(() => {
+    let busy = false;
+    const run = async () => {
+      if (busy || document.visibilityState !== "visible") return;
+      busy = true;
+      try {
+        const r = await tick();
+        if (r.campaigns.sent || r.campaigns.failed || r.leads.sent || r.leads.failed) {
+          queryClient.invalidateQueries({ queryKey: ["leads"] });
+          queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        }
+      } catch { /* ignore, next minute retries */ }
+      busy = false;
+    };
+    const t = setInterval(run, 60000);
+    run();
+    return () => clearInterval(t);
+  }, [tick, queryClient]);
 
   async function signOut() {
     await queryClient.cancelQueries();

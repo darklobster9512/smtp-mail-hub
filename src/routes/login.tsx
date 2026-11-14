@@ -27,6 +27,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [failed, setFailed] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,6 +71,7 @@ function LoginPage() {
       }
       navigate({ to: "/admin/overview", replace: true });
     } catch (err) {
+      setFailed(true);
       notifyError(err, "Anmeldung fehlgeschlagen");
     } finally {
       setBusy(false);
@@ -111,6 +113,11 @@ function LoginPage() {
               {busy ? "Bitte warten…" : activeMode === "login" ? "Anmelden" : "Registrieren"}
             </Button>
           </form>
+          {failed && (
+            <p className="mt-4 rounded-md border border-border p-3 text-xs text-muted-foreground">
+              Anmeldung klappt nicht? Im Supabase-Dashboard unter Authentication → Sign In / Providers → Email die E-Mail-Anmeldung aktivieren; für schnelle Tests ggf. „Confirm email“ ausschalten.
+            </p>
+          )}
         </div>
       </div>
     </div>
