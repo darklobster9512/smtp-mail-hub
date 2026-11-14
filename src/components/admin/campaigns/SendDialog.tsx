@@ -31,7 +31,7 @@ export function SendDialog({ campaign, onClose }: { campaign: { id: string; name
     queryKey: ["smtp-accounts-active"],
     enabled: !!campaign,
     queryFn: async () => {
-      const { data, error } = await supabase.from("smtp_accounts").select("id, label, host, sent_today, sent_date, daily_limit").eq("status", "active").order("created_at");
+      const { data, error } = await supabase.from("smtp_accounts").select("id, provider, label, host, sent_today, sent_date, daily_limit").eq("status", "active").order("created_at");
       if (error) throw error;
       return data;
     },
@@ -88,7 +88,7 @@ export function SendDialog({ campaign, onClose }: { campaign: { id: string; name
                 return (
                   <label key={a.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm">
                     <Checkbox checked={selected.includes(a.id)} onCheckedChange={() => toggle(a.id)} />
-                    <span className="font-medium">{a.label || a.host}</span>
+                    <span className="font-medium">{a.label || a.host}</span>{a.provider === "resend" && <span className="ml-2 rounded border border-primary px-1.5 text-[10px] text-primary">Resend</span>}
                     <span className="ml-auto rounded-md bg-secondary px-2 py-0.5 text-xs">heute {used} / {a.daily_limit}</span>
                   </label>
                 );

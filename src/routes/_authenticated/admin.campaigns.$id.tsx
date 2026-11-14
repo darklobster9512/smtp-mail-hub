@@ -84,7 +84,7 @@ function Detail() {
   const pending = Math.max(0, camp.total - camp.sent - camp.failed);
   const pct = camp.total ? Math.round(((camp.sent + camp.failed) / camp.total) * 100) : 0;
   const pages = Math.max(1, Math.ceil((recips?.count ?? 0) / PAGE));
-  const accName = (aid: string | null) => { const a = accounts.find((x) => x.id === aid); return a ? a.label || a.host : "–"; };
+  const accName = (aid: string | null) => { const a = accounts.find((x) => x.id === aid); return a ? a.label || a.host || "Resend" : "–"; };
   const refresh = () => { qc.invalidateQueries({ queryKey: ["campaign", id] }); qc.invalidateQueries({ queryKey: ["campaign-recipients", id] }); };
 
   async function doRetry() {

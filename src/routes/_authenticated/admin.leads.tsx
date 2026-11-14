@@ -107,11 +107,11 @@ function Leads() {
         head={["E-Mail", "Vorname", "Nachname", "Quelle", "Status", "Erstellt"]}
         empty="Keine Leads im gewählten Zeitraum."
         rows={rows.map((l) => {
-          const acc = l.smtp_accounts as { label: string | null; host: string } | null;
+          const acc = l.smtp_accounts as { label: string | null; host: string | null } | null;
           return [
             <span key="e" className="font-medium" title={l.error ?? undefined}>{l.email}</span>,
             l.first_name ?? "–", l.last_name ?? "–", l.source ?? "–",
-            <LeadStatus key="s" status={l.status} at={l.scheduled_at} account={acc ? acc.label || acc.host : null} />,
+            <LeadStatus key="s" status={l.status} at={l.scheduled_at} account={acc ? acc.label || acc.host || "Resend" : null} />,
             fmtDate(l.created_at),
           ];
         })}

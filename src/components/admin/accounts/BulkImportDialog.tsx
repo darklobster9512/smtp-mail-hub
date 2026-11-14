@@ -17,7 +17,7 @@ export function BulkImportDialog({ open, onOpenChange, onSaved }: { open: boolea
   const [busy, setBusy] = useState(false);
   const { data: existing = [] } = useQuery({
     queryKey: ["smtp-existing"], enabled: open,
-    queryFn: async () => (await supabase.from("smtp_accounts").select("host, user_email")).data ?? [],
+    queryFn: async () => ((await supabase.from("smtp_accounts").select("host, user_email").eq("provider", "smtp")).data ?? []).map((r) => ({ host: r.host ?? "", user_email: r.user_email ?? "" })),
   });
   const parsed = useMemo(() => parseSmtpLines(text, existing), [text, existing]);
 

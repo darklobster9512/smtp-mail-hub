@@ -16,15 +16,14 @@ export const sendTestMail = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: acc, error } = await supabaseAdmin.from("smtp_accounts").select("*").eq("id", data.account_id).maybeSingle();
     if (error || !acc) return { success: false, error: "Konto nicht gefunden." };
-    if (!acc.password) return { success: false, error: "Für dieses Konto ist kein Passwort gespeichert." };
+    if (acc.provider !== "resend" && !acc.password) return { success: false, error: "Für dieses Konto ist kein Passwort gespeichert." };
 
-    const fromEmail = acc.from_email || acc.user_email;
-    const label = acc.label || acc.host;
-    const { createSender } = await import("./smtp-transport.server");
-    const sender = createSender();
+    const label = acc.label || acc.host || "Resend";
+    const { createMailer, senderEmail } = await import("./mail-send.server");
+    const sender = createMailer();
     try {
-      await sender.send(acc.id, acc, {
-        from: { name: acc.from_name || label, email: fromEmail },
+      await sender.send(acc, {
+        from: { name: acc.from_name || label, email: senderEmail(acc) },
         to: { email: data.test_email_to },
         ...businessMail(acc.from_name || label),
       });

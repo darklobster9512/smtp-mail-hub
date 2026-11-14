@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fillTemplate } from "./campaign-parse";
 import { buildAnrede } from "./anrede";
-import { SmtpConnectError, createSender } from "./smtp-transport.server";
+import { SmtpConnectError } from "./smtp-transport.server";
+import { createMailer, senderEmail, senderName } from "./mail-send.server";
+import { ResendError } from "./resend-api";
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 
@@ -13,7 +15,8 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
   if (!got) return { ran: false, reason: "locked", sent: 0, failed: 0 };
   const started = Date.now();
   const res: LeadsTickResult = { ran: true, sent: 0, failed: 0 };
-  const sender = createSender();
+  const sender = createMailer();
+  const skip = new Set<string>();
   try {
     while (Date.now() - started < budgetMs) {
       const { data: s } = await supabaseAdmin.from("leads_settings").select("*").eq("id", 1).maybeSingle();
@@ -43,15 +46,15 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
       if (!tpl) { await fail("Keine Auto-Vorlage gewählt."); continue; }
 
       const { data: accRows } = await supabaseAdmin.from("smtp_accounts").select("*").eq("status", "active");
-      const accounts = (accRows ?? []).map((a) => (a.sent_date !== today() ? { ...a, sent_today: 0 } : a)).filter((a) => a.sent_today < a.daily_limit);
+      const accounts = (accRows ?? []).map((a) => (a.sent_date !== today() ? { ...a, sent_today: 0 } : a)).filter((a) => a.sent_today < a.daily_limit && !skip.has(a.id));
       if (accounts.length === 0) { res.reason = "no-account"; break; } // leave scheduled, retry later
       const acc = accounts[Math.floor(Math.random() * accounts.length)]!;
 
       const vars = { klick_domain: acc.klick_domain, first_name: lead.first_name, last_name: lead.last_name, anrede: buildAnrede(lead.first_name, lead.last_name) };
       await supabaseAdmin.from("leads_settings").update({ last_auto_sent_at: new Date().toISOString() }).eq("id", 1);
       try {
-        await sender.send(acc.id, acc, {
-          from: { name: acc.from_name || acc.label || acc.host, email: acc.from_email || acc.user_email },
+        await sender.send(acc, {
+          from: { name: senderName(acc), email: senderEmail(acc) },
           to: { email: lead.email },
           subject: fillTemplate(tpl.subject ?? "", vars, { html: false }),
           html: fillTemplate(tpl.html_content ?? "", vars, { html: true }),
@@ -60,6 +63,21 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
         await supabaseAdmin.from("leads").update({ status: "sent", sent_at: new Date().toISOString(), smtp_account_used: acc.id, campaign_id: tpl.id, error: null }).eq("id", lead.id);
         await supabaseAdmin.from("smtp_accounts").update({ sent_today: acc.sent_today + 1, sent_date: today() }).eq("id", acc.id);
       } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        const accName = acc.label || acc.host || "Resend";
+        // account/connection problems: lead stays scheduled and is retried with another account
+        if (e instanceof ResendError && e.kind === "auth") {
+          skip.add(acc.id);
+          await supabaseAdmin.from("smtp_accounts").update({ status: "blocked" }).eq("id", acc.id);
+          await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Konto ${accName} blockiert: API-Key ungültig`, details: { account_id: acc.id, error: msg } });
+          continue;
+        }
+        if (e instanceof ResendError && e.kind === "rate") { skip.add(acc.id); continue; }
+        if (e instanceof SmtpConnectError) {
+          skip.add(acc.id);
+          await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Verbindung zu ${accName} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
+          continue;
+        }
         await fail(e instanceof Error ? e.message : String(e), acc.id);
       }
     }

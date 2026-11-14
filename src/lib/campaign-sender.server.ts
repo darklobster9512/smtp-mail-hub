@@ -1,12 +1,14 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fillTemplate } from "./campaign-parse";
-import { SmtpConnectError, createSender } from "./smtp-transport.server";
+import { SmtpConnectError } from "./smtp-transport.server";
+import { createMailer, senderEmail, senderName } from "./mail-send.server";
+import { ResendError } from "./resend-api";
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Acc = {
-  id: string; host: string; port: number; user_email: string; password: string | null;
+  id: string; provider: string; host: string | null; port: number; user_email: string | null; password: string | null; api_key: string | null;
   from_name: string | null; from_email: string | null; klick_domain: string | null;
   daily_limit: number; sent_today: number; sent_date: string | null; status: string; label: string | null;
 };
@@ -19,7 +21,8 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
   if (!got) return { ran: false, reason: "locked", sent: 0, failed: 0 };
   const started = Date.now();
   const result: TickResult = { ran: true, sent: 0, failed: 0 };
-  const sender = createSender();
+  const sender = createMailer();
+  const pausedUntil = new Map<string, number>();
   let proxyFailures = 0;
   const badAccounts = new Set<string>();
 
@@ -68,13 +71,13 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
         let acc: Acc | null = null;
         for (let k = 0; k < accounts.length; k++) {
           const cand = accounts[(rr + k) % accounts.length]!;
-          if (!badAccounts.has(cand.id) && cand.sent_today < cand.daily_limit) { acc = cand; rr = (rr + k + 1) % accounts.length; break; }
+          if (!badAccounts.has(cand.id) && (pausedUntil.get(cand.id) ?? 0) <= Date.now() && cand.sent_today < cand.daily_limit) { acc = cand; rr = (rr + k + 1) % accounts.length; break; }
         }
         if (!acc) {
-          const allBad = accounts.every((a) => badAccounts.has(a.id));
+          const allBad = accounts.every((a) => badAccounts.has(a.id) || (pausedUntil.get(a.id) ?? 0) > Date.now());
           await supabaseAdmin.from("campaigns").update({
             rr_index: rr, sent: sentInCamp, failed: failedInCamp,
-            last_error: allBad ? "Keine Verbindung zu den SMTP-Konten – wird erneut versucht." : "Alle Konten haben das Tageslimit erreicht – Versand pausiert.",
+            last_error: allBad ? "Keine Konten verfügbar (Verbindung/Ratenlimit) – wird erneut versucht." : "Alle Konten haben das Tageslimit erreicht – Versand pausiert.",
           }).eq("id", camp.id);
           stop = true;
           break;
@@ -86,8 +89,8 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
 
         const vars = { klick_domain: acc.klick_domain, first_name: rec.first_name, last_name: rec.last_name, anrede: rec.anrede };
         try {
-          await sender.send(acc.id, acc, {
-            from: { name: acc.from_name || acc.label || acc.host, email: acc.from_email || acc.user_email },
+          await sender.send(acc, {
+            from: { name: senderName(acc), email: senderEmail(acc) },
             to: { email: rec.email },
             subject: fillTemplate(camp.subject ?? "", vars, { html: false }),
             html: fillTemplate(camp.html_content ?? "", vars, { html: true }),
@@ -98,6 +101,18 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
           await supabaseAdmin.from("smtp_accounts").update({ sent_today: acc.sent_today, sent_date: today() }).eq("id", acc.id);
         } catch (e) {
           const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+          const accName = acc.label || acc.host || "Resend";
+          if (e instanceof ResendError && e.kind === "auth") {
+            badAccounts.add(acc.id);
+            await supabaseAdmin.from("smtp_accounts").update({ status: "blocked" }).eq("id", acc.id);
+            await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Konto ${accName} blockiert: API-Key ungültig`, details: { account_id: acc.id, error: msg } });
+            continue;
+          }
+          if (e instanceof ResendError && e.kind === "rate") {
+            pausedUntil.set(acc.id, Date.now() + 60000);
+            await supabaseAdmin.from("mail_logs").insert({ type: "warning", message: `Konto ${accName}: Ratenlimit, 60 s Pause`, details: { account_id: acc.id } });
+            continue;
+          }
           if (e instanceof SmtpConnectError) {
             // recipient stays pending; the connection (not the recipient) is the problem
             if (e.proxyFailure) {
@@ -107,8 +122,8 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
               if (proxyFailures >= 3) { stop = true; break; }
             } else {
               badAccounts.add(acc.id);
-              await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Verbindung zu ${acc.label || acc.host} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
-              await supabaseAdmin.from("campaigns").update({ last_error: `Verbindung zu ${acc.label || acc.host} fehlgeschlagen: ${msg}` }).eq("id", camp.id);
+              await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Verbindung zu ${accName} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
+              await supabaseAdmin.from("campaigns").update({ last_error: `Verbindung zu ${accName} fehlgeschlagen: ${msg}` }).eq("id", camp.id);
             }
             continue;
           }

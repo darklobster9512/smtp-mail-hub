@@ -32,7 +32,7 @@ export function TestMailDialog({ account, onClose }: { account: Account | null; 
   return (
     <Dialog open={!!account} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Testmail über {account?.label || account?.host}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Testmail über {account?.label || account?.host || "Resend"}</DialogTitle></DialogHeader>
         <form onSubmit={onSubmit} className="flex gap-2">
           <Input type="email" placeholder="empfaenger@example.com" value={to} onChange={(e) => setTo(e.target.value)} autoFocus />
           <Button type="submit" disabled={!valid || busy}>{busy ? "Sende…" : "Senden"}</Button>

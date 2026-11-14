@@ -18,7 +18,7 @@ import { TestMailDialog } from "@/components/admin/accounts/TestMailDialog";
 export const Route = createFileRoute("/_authenticated/admin/accounts")({ component: Accounts });
 
 const PAGE = 25;
-const COLS = "id, label, host, port, user_email, from_name, from_email, klick_domain, daily_limit, sent_today, status, created_at";
+const COLS = "id, provider, api_key_hint, label, host, port, user_email, from_name, from_email, klick_domain, daily_limit, sent_today, status, created_at";
 
 function Accounts() {
   const qc = useQueryClient();
@@ -60,12 +60,15 @@ function Accounts() {
         </div>
       </div>
       <DataTable
-        head={["Label", "Host:Port", "Absender", "Klick-Domain", "Heute", "Status", "Erstellt", ""]}
+        head={["Label", "Typ", "Zugang", "Absender", "Klick-Domain", "Heute", "Status", "Erstellt", ""]}
         empty="Noch keine E-Mail-Konten."
         rows={rows.map((a) => [
           <span key="l" className="font-medium">{a.label ?? "–"}</span>,
-          `${a.host}:${a.port}`,
-          a.from_email ?? a.user_email,
+          a.provider === "resend"
+            ? <span key="p" className="rounded-md border border-primary bg-background px-2 py-0.5 text-xs font-medium text-primary">Resend</span>
+            : <span key="p" className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">SMTP</span>,
+          a.provider === "resend" ? <code key="k" className="text-xs">{a.api_key_hint ?? "–"}</code> : `${a.host}:${a.port}`,
+          a.from_email ?? a.user_email ?? "–",
           a.klick_domain ?? "–",
           <span key="t" className={`rounded-md px-2 py-0.5 text-xs font-medium ${a.sent_today >= a.daily_limit ? "bg-destructive/15 text-destructive" : "bg-secondary text-foreground"}`}>{a.sent_today} / {a.daily_limit}</span>,
           <StatusBadge key="s" value={a.status} />,
@@ -90,7 +93,7 @@ function Accounts() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Konto löschen?</AlertDialogTitle>
-            <AlertDialogDescription>„{deleting?.label || deleting?.host}“ wird dauerhaft entfernt.</AlertDialogDescription>
+            <AlertDialogDescription>„{deleting?.label || deleting?.host || "Konto"}“ wird dauerhaft entfernt.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>

@@ -316,52 +316,61 @@ export type Database = {
       }
       smtp_accounts: {
         Row: {
+          api_key: string | null
+          api_key_hint: string | null
           created_at: string
           daily_limit: number
           from_email: string | null
           from_name: string | null
-          host: string
+          host: string | null
           id: string
           klick_domain: string | null
           label: string | null
           password: string | null
           port: number
+          provider: string
           sent_date: string | null
           sent_today: number
           status: string
-          user_email: string
+          user_email: string | null
         }
         Insert: {
+          api_key?: string | null
+          api_key_hint?: string | null
           created_at?: string
           daily_limit?: number
           from_email?: string | null
           from_name?: string | null
-          host: string
+          host?: string | null
           id?: string
           klick_domain?: string | null
           label?: string | null
           password?: string | null
           port?: number
+          provider?: string
           sent_date?: string | null
           sent_today?: number
           status?: string
-          user_email: string
+          user_email?: string | null
         }
         Update: {
+          api_key?: string | null
+          api_key_hint?: string | null
           created_at?: string
           daily_limit?: number
           from_email?: string | null
           from_name?: string | null
-          host?: string
+          host?: string | null
           id?: string
           klick_domain?: string | null
           label?: string | null
           password?: string | null
           port?: number
+          provider?: string
           sent_date?: string | null
           sent_today?: number
           status?: string
-          user_email?: string
+          user_email?: string | null
         }
         Relationships: []
       }
