@@ -1,34 +1,47 @@
-# Proxy lehnt SMTP-Verbindung ab: Diagnose und bessere Fehlerführung
+# Zweiter Kontotyp „Resend API“ neben SMTP
 
-## Was der Fehler bedeutet
-Die Meldung "Proxy-Tunnel abgelehnt: Verbindung nicht erlaubt" kommt direkt vom Proxy-Anbieter (SOCKS5-Antwortcode 2, "connection not allowed by ruleset"). Die Anmeldung beim Proxy `us-rpool.proxied.com:11001` hat also geklappt. Erst als die App den Tunnel zum Mailserver (SMTP-Port 465 oder 587) angefordert hat, hat der Proxy das verweigert.
+## Was du bekommst
+1. **Konto anlegen/bearbeiten:** Oben eine Auswahl „SMTP“ oder „Resend API“.
+   - SMTP: alle bisherigen Felder.
+   - Resend: Label, API-Key (`re_…`), Absendername, Absender-E-Mail (Hinweis: muss eine in Resend verifizierte Domain sein), Klick-Domain, Tageslimit.
+   - Beim Bearbeiten bleibt das Key-Feld leer: „leer lassen = unverändert“, genau wie beim SMTP-Passwort.
+2. **Tabelle:** Neue Spalte „Typ“ mit Badge (SMTP grau, Resend schwarz mit neongelbem Rand). Statt Host:Port steht bei Resend der maskierte Key, z. B. `re_1…abcd`.
+3. **Testmail** funktioniert für beide Typen, mit derselben seriösen Betreffliste und demselben Layout.
+4. **Kampagnen und Auto-Leads** verteilen über alle aktiven Konten beider Typen gemischt. Tageslimit und „Heute gesendet“ gelten für beide gleich. Bei der Kampagnen-Kontoauswahl sind Resend-Konten mit Badge zu sehen.
+5. **Bulk-Import** bleibt nur für SMTP.
 
-Sehr wahrscheinlich sperrt der Anbieter SMTP-Ports. Das ist bei Residential-/Rotating-Proxys üblich, um Spam zu verhindern. Das ist noch nicht bestätigt: Ich konnte ihn nicht mit deinen Zugangsdaten testen. Der Fehler liegt damit mit hoher Wahrscheinlichkeit nicht im App-Code, und die App kann ihn nicht umgehen. Der Exit-IP-Test läuft über Port 443 und kann deshalb trotzdem grün sein.
+## Fehlerregeln bei Resend
+- **Key ungültig (401/403):** Das Konto wird auf „blocked“ gesetzt und ins Protokoll geschrieben. Die Mail geht über das nächste Konto raus, der Empfänger gilt nicht als fehlgeschlagen.
+- **Zu viele Anfragen (429):** Das Konto pausiert 60 Sekunden, die anderen Konten senden weiter. Der Empfänger bleibt offen.
+- **Andere Ablehnung (z. B. 422, Absender nicht verifiziert):** Der Empfänger wird mit der genauen Resend-Meldung als fehlgeschlagen markiert.
 
-## Was die Proxied-Dokumentation dazu sagt
-Ich habe die Client-API-Dokumentation und die OpenAPI-Beschreibung von Proxied gelesen. Sie beschreibt Kauf, Zugangsdaten, Rotation und je Abo einen HTTP(S)-Port und einen SOCKS5-Port. Zu SMTP, Mailports oder gesperrten Zielports steht dort nichts. Die Dokumentation bestätigt also weder, dass SMTP erlaubt ist, noch, dass es gesperrt ist. Die Ablehnung kommt vom Proxy selbst, und wie viele Anbieter sperrt auch er vermutlich Mailports, wenn nichts anderes freigeschaltet ist. Das lässt sich nur mit einem Test oder einer Anfrage beim Proxied-Support klären.
+## Abweichungen von deiner Vorgabe
+- **Kein Proxy für Resend:** Resend-Mails gehen direkt über HTTPS raus. Resend verschickt die Mail ohnehin von den eigenen Servern, deshalb bringt ein Proxy hier nichts für die Absender-IP. Der Proxy-Pool gilt weiter nur für SMTP.
+- **Der API-Key ist im Browser nicht lesbar**, genau wie SMTP-Passwörter. Für die maskierte Anzeige speichert die Datenbank automatisch nur Anfang und Ende des Keys mit.
+- **Badge-Farbe:** Schwarz mit Neongelb statt Lila, passend zur festgelegten Farbregel.
+- Es gibt keinen nodemailer. Der SMTP-Weg bleibt der bestehende Versand inklusive Proxy.
 
-Was du ohne Änderung ausprobieren kannst:
-- Lege denselben Zugang noch einmal mit dem HTTP(S)-Port statt dem SOCKS5-Port an (`http://...`). Manche Anbieter haben für beide Wege unterschiedliche Regeln.
-- Frage bei Proxied nach, ob die Zielports 465 und 587 für dein Abo freigeschaltet werden können.
-
-## Anbieter-Auswahl
-Eine Garantie gibt es bei keinem Anbieter. Ob Mailports durchgehen, hängt vom Produkt ab. Beispiel: Decodo sperrt SMTP bei ISP-Proxys dauerhaft. Es gibt Anbieter, die offene Ports 465/587 ausdrücklich bewerben. Du kannst sie über den geplanten SMTP-Port-Test vor dem echten Versand prüfen.
-
-## Geplante Änderungen
-1. **SMTP-Test je Proxy:** Neben "Exit-IP testen" kommt ein Knopf "SMTP-Port testen". Er öffnet über den Proxy nur eine Verbindung zum Mailserver des gewählten SMTP-Kontos, ohne Anmeldung und ohne Mail, und liest den Server-Gruß. So siehst du vor dem Versand, ob der Anbieter Port 465/587 durchlässt.
-2. **Klarere Fehlermeldung:** Bei dem Fehler "Verbindung nicht erlaubt" oder HTTP 403 zeigt die App einen Hinweis. Er sagt, dass der Proxy-Anbieter diesen SMTP-Port blockiert, und dass du bei ihm SMTP freischalten lassen oder einen Proxy-Typ ohne SMTP-Sperre nehmen musst (zum Beispiel dedizierte oder ISP-Proxys).
-3. **Fehlerzähler nur bei Verbindungsproblemen:** Eine Ablehnung des Ziels durch den Anbieter ist eine Regelsperre und kein Ausfall. Sie zählt nicht in die 5 Fehler, die einen Proxy deaktivieren. Sonst wird dein Proxy bei jedem Testversuch ohne echten Defekt abgeschaltet.
-4. **Kein stilles Senden von der Server-IP:** Aktuell geht die Mail direkt raus, wenn der Pool an ist, aber kein Proxy aktiv ist. Das widerspricht dem Zweck des Pools. Künftig bricht der Versand dann mit einer klaren Meldung ab, und die Warnung auf der Proxy-Seite wird entsprechend angepasst. Kampagnen und Auto-Leads bleiben in dem Fall offen.
-5. **Tests:** Je ein Test für Code 2 (kein Zähler, klare Meldung), für den leeren aktiven Pool (kein Direktversand) und für den SMTP-Port-Test über einen lokalen Proxy.
-
-## Was du sofort tun kannst, ohne Änderung
-- Frage den Anbieter oder prüfe seine Dokumentation, ob SMTP (Port 465/587) erlaubt ist.
-- Alternativ den Pool-Schalter ausschalten. Dann sendet die App direkt von der Server-IP.
+## Hinweis
+Der vorige Plan zur Proxy-Sperre (SMTP-Port-Test, klarere Meldung) ist noch nicht umgesetzt. Ich setze nur diesen Plan um. Sag Bescheid, wenn der andere danach kommen soll.
 
 ## Technische Details
-- `src/lib/proxy-socket.server.ts`: eigener Fehlertyp für Regelsperre (SOCKS-Code 2 oder HTTP 403) neben dem Verbindungsfehler. Neue Funktion `probeSmtpPort(proxy, host, port, mode)`.
-- `src/lib/proxy-retry.ts` und `src/lib/smtp-transport.server.ts`: Regelsperre ohne Wiederholung und ohne Zähler. Bei aktivem Pool ohne aktiven Proxy wird ein Fehler geworfen statt direkt zu verbinden. Dafür ist wahrscheinlich eine kleine Migration am Auswahl-RPC nötig, weil er "Pool aus" und "Pool an, aber leer" nicht unterscheidet.
-- `src/lib/proxies.functions.ts`: neue admin-geprüfte Funktion für den SMTP-Port-Test.
-- `src/routes/_authenticated/admin.proxies.tsx`: neuer Knopf mit Auswahl des SMTP-Kontos und angepasster Hinweistext.
-- `src/lib/campaign-sender.server.ts` und `src/lib/leads-sender.server.ts`: Empfänger bleiben bei dem Fehler offen und werden nicht als fehlgeschlagen markiert.
+- Migration auf `smtp_accounts`:
+  - `provider text not null default 'smtp'` mit Check `smtp|resend`.
+  - `api_key text` und `api_key_hint text`.
+  - `host` und `user_email` dürfen leer sein. Ein Check verlangt sie bei SMTP und `api_key` bei Resend.
+  - Trigger füllt `api_key_hint`.
+  - Spaltenrechte: `authenticated` bekommt auf `api_key` kein SELECT, nur INSERT/UPDATE (wie bei `password`).
+- `src/lib/mail-send.server.ts`: zentrales `createMailer()` mit `send(acc, msg)`.
+  - Platzhalter-Ersetzung bleibt vor dem Aufruf, also gleich für beide Typen.
+  - Bei SMTP geht es an `createSender()`, bei Resend per `fetch` an `https://api.resend.com/emails`.
+  - Neuer Fehlertyp `ResendError(kind: auth|rate|reject)`.
+- `campaign-sender.server.ts`, `leads-sender.server.ts`, `smtp.functions.ts` nutzen nur noch diese Funktion.
+  - auth: Konto wird blockiert, Wahl des nächsten Kontos.
+  - rate: Konto 60 s im Lauf pausiert, Empfänger bleibt offen.
+  - Absender-Fallbacks ohne `host`.
+- UI: `AccountDialog` (Provider-Select, bedingte Felder, Schema je Typ), `admin.accounts.tsx` (Typ-Spalte, maskierter Key), `SendDialog`, Kampagnen-Detail und Leads-Anzeige mit `label ?? host ?? "Resend"`.
+- Tests:
+  - Status 401/403/429/422 werden richtig zugeordnet (mit gemocktem fetch).
+  - Rotation: ein blockiertes oder pausiertes Konto wird übersprungen.
+  - Key-Maskierung.
+- `AGENTS.md`: Regel zum zentralen Versand über beide Typen aktualisieren.
