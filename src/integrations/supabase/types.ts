@@ -208,6 +208,7 @@ export type Database = {
           auto_campaign_enabled: boolean
           delay_seconds: number
           id: number
+          last_auto_sent_at: string | null
           min_gap_seconds: number
           template_key: string
         }
@@ -215,6 +216,7 @@ export type Database = {
           auto_campaign_enabled?: boolean
           delay_seconds?: number
           id?: number
+          last_auto_sent_at?: string | null
           min_gap_seconds?: number
           template_key?: string
         }
@@ -222,6 +224,7 @@ export type Database = {
           auto_campaign_enabled?: boolean
           delay_seconds?: number
           id?: number
+          last_auto_sent_at?: string | null
           min_gap_seconds?: number
           template_key?: string
         }

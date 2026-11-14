@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/admin/ui";
@@ -17,7 +17,7 @@ function Automation() {
   const rows = data
     ? [
         ["Auto-Kampagne", data.auto_campaign_enabled ? "Aktiv" : "Inaktiv"],
-        ["Vorlage", data.template_key],
+        ["Vorlage", data.template_key ? "gewählt" : "keine"],
         ["Verzögerung", `${data.delay_seconds} s`],
         ["Mindestabstand", `${data.min_gap_seconds} s`],
       ]
@@ -34,6 +34,7 @@ function Automation() {
           </div>
         ))}
       </div>
+      <p className="mt-4 text-sm text-muted-foreground">Bearbeiten unter <Link to="/admin/leads" className="text-primary underline">Leads</Link>.</p>
     </>
   );
 }

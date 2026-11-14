@@ -20,6 +20,7 @@ import { Route as AuthenticatedAdminCampaignsRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminLeadsRouteImport } from './routes/_authenticated/admin.leads'
 import { Route as AuthenticatedAdminOverviewRouteImport } from './routes/_authenticated/admin.overview'
 import { Route as ApiPublicCampaignTickRouteImport } from './routes/api/public/campaign-tick'
+import { Route as ApiPublicLeadsIngestRouteImport } from './routes/api/public/leads-ingest'
 import { Route as AuthenticatedAdminCampaignsIndexRouteImport } from './routes/_authenticated/admin.campaigns.index'
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
 import { Route as AuthenticatedAdminCampaignsNewRouteImport } from './routes/_authenticated/admin.campaigns.new'
@@ -83,6 +84,11 @@ const ApiPublicCampaignTickRoute = ApiPublicCampaignTickRouteImport.update({
   path: '/api/public/campaign-tick',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicLeadsIngestRoute = ApiPublicLeadsIngestRouteImport.update({
+  id: '/api/public/leads-ingest',
+  path: '/api/public/leads-ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminCampaignsIndexRoute =
   AuthenticatedAdminCampaignsIndexRouteImport.update({
     id: '/',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/admin/leads': typeof AuthenticatedAdminLeadsRoute
   '/admin/overview': typeof AuthenticatedAdminOverviewRoute
   '/api/public/campaign-tick': typeof ApiPublicCampaignTickRoute
+  '/api/public/leads-ingest': typeof ApiPublicLeadsIngestRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRoute
   '/admin/campaigns/new': typeof AuthenticatedAdminCampaignsNewRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/admin/leads': typeof AuthenticatedAdminLeadsRoute
   '/admin/overview': typeof AuthenticatedAdminOverviewRoute
   '/api/public/campaign-tick': typeof ApiPublicCampaignTickRoute
+  '/api/public/leads-ingest': typeof ApiPublicLeadsIngestRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRoute
   '/admin/campaigns/new': typeof AuthenticatedAdminCampaignsNewRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/leads': typeof AuthenticatedAdminLeadsRoute
   '/_authenticated/admin/overview': typeof AuthenticatedAdminOverviewRoute
   '/api/public/campaign-tick': typeof ApiPublicCampaignTickRoute
+  '/api/public/leads-ingest': typeof ApiPublicLeadsIngestRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRoute
   '/_authenticated/admin/campaigns/new': typeof AuthenticatedAdminCampaignsNewRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/admin/leads'
     | '/admin/overview'
     | '/api/public/campaign-tick'
+    | '/api/public/leads-ingest'
     | '/admin/'
     | '/admin/campaigns/$id'
     | '/admin/campaigns/new'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/admin/leads'
     | '/admin/overview'
     | '/api/public/campaign-tick'
+    | '/api/public/leads-ingest'
     | '/admin'
     | '/admin/campaigns/$id'
     | '/admin/campaigns/new'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/leads'
     | '/_authenticated/admin/overview'
     | '/api/public/campaign-tick'
+    | '/api/public/leads-ingest'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
     | '/_authenticated/admin/campaigns/new'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiPublicCampaignTickRoute: typeof ApiPublicCampaignTickRoute
+  ApiPublicLeadsIngestRoute: typeof ApiPublicLeadsIngestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/campaign-tick'
       fullPath: '/api/public/campaign-tick'
       preLoaderRoute: typeof ApiPublicCampaignTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/leads-ingest': {
+      id: '/api/public/leads-ingest'
+      path: '/api/public/leads-ingest'
+      fullPath: '/api/public/leads-ingest'
+      preLoaderRoute: typeof ApiPublicLeadsIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/campaigns/': {
@@ -383,6 +403,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiPublicCampaignTickRoute: ApiPublicCampaignTickRoute,
+  ApiPublicLeadsIngestRoute: ApiPublicLeadsIngestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

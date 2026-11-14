@@ -15,7 +15,9 @@ export const Route = createFileRoute("/api/public/campaign-tick")({
         if (!secret || diff !== 0) return new Response("Unauthorized", { status: 401 });
         const { runTick } = await import("@/lib/campaign-sender.server");
         const res = await runTick();
-        return Response.json(res);
+        const { runLeadsTick } = await import("@/lib/leads-sender.server");
+        const leads = await runLeadsTick(15000);
+        return Response.json({ ...res, leads });
       },
     },
   },

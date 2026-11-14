@@ -1,27 +1,108 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { DataTable, PageHeader, StatusBadge, fmtDate } from "@/components/admin/ui";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DataTable, PageHeader, fmtDate } from "@/components/admin/ui";
+import { SettingsPanel, useLeadsSettings } from "@/components/admin/leads/SettingsPanel";
+import { LeadDialog } from "@/components/admin/leads/LeadDialog";
+import { runLeadsTickFn } from "@/lib/leads.functions";
 
-export const Route = createFileRoute("/_authenticated/admin/leads")({ component: Leads });
+export const Route = createFileRoute("/_authenticated/admin/leads")({
+  head: () => ({ meta: [{ title: "Leads – Postwerk Admin" }] }),
+  component: Leads,
+});
+
+const PAGE = 25;
+type Range = "24h" | "week" | "all";
+
+function LeadStatus({ status, at, account }: { status: string; at: string | null; account: string | null }) {
+  const map: Record<string, [string, string]> = {
+    new: ["neu", "bg-secondary text-muted-foreground"],
+    scheduled: ["geplant", "bg-chart-4/15 text-chart-4"],
+    sent: ["gesendet", "bg-primary/15 text-primary"],
+    failed: ["fehlgeschlagen", "bg-destructive/15 text-destructive"],
+  };
+  const [label, cls] = map[status] ?? [status, "bg-secondary text-muted-foreground"];
+  const extra = status === "scheduled" && at ? ` · ${new Date(at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : status === "sent" && account ? ` · ${account}` : "";
+  return <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${cls}`}>{label}{extra}</span>;
+}
 
 function Leads() {
-  const { data = [] } = useQuery({
-    queryKey: ["leads"],
+  const qc = useQueryClient();
+  const [page, setPage] = useState(0);
+  const [range, setRange] = useState<Range>("all");
+  const [open, setOpen] = useState(false);
+  const { data: settings } = useLeadsSettings();
+  const tick = useServerFn(runLeadsTickFn);
+
+  const { data } = useQuery({
+    queryKey: ["leads", page, range],
+    placeholderData: keepPreviousData,
+    refetchInterval: 15000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("id, email, first_name, last_name, source, status, created_at").order("created_at", { ascending: false }).limit(500);
+      let q = supabase.from("leads").select("id, email, first_name, last_name, source, status, scheduled_at, created_at, error, smtp_accounts(label, host)", { count: "exact" });
+      if (range !== "all") q = q.gte("created_at", new Date(Date.now() - (range === "24h" ? 86400e3 : 7 * 86400e3)).toISOString());
+      const { data, count, error } = await q.order("created_at", { ascending: false }).range(page * PAGE, page * PAGE + PAGE - 1);
       if (error) throw error;
-      return data;
+      return { rows: data, count: count ?? 0 };
     },
   });
+
+  // While this page is open, drive the auto-send of due leads.
+  useEffect(() => {
+    let stop = false;
+    const loop = async () => {
+      while (!stop) {
+        try { const r = await tick(); if (r.sent || r.failed) { qc.invalidateQueries({ queryKey: ["leads"] }); qc.invalidateQueries({ queryKey: ["leads-stats"] }); } } catch { /* ignore */ }
+        await new Promise((res) => setTimeout(res, 20000));
+      }
+    };
+    loop();
+    return () => { stop = true; };
+  }, [tick, qc]);
+
+  const rows = data?.rows ?? [];
+  const pages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE));
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["leads"] }); qc.invalidateQueries({ queryKey: ["leads-stats"] }); };
+
   return (
     <>
-      <PageHeader title="Leads" />
+      <PageHeader title="Leads" description="Leads verwalten und automatisch anschreiben." />
+      <SettingsPanel />
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <Select value={range} onValueChange={(v) => { setRange(v as Range); setPage(0); }}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="24h">Letzte 24 Stunden</SelectItem>
+            <SelectItem value="week">Letzte Woche</SelectItem>
+            <SelectItem value="all">Alle</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Lead hinzufügen</Button>
+      </div>
       <DataTable
-        head={["E-Mail", "Name", "Quelle", "Status", "Erstellt"]}
-        empty="Noch keine Leads."
-        rows={data.map((l) => [l.email, [l.first_name, l.last_name].filter(Boolean).join(" ") || "–", l.source ?? "–", <StatusBadge key="s" value={l.status} />, fmtDate(l.created_at)])}
+        head={["E-Mail", "Vorname", "Nachname", "Quelle", "Status", "Erstellt"]}
+        empty="Keine Leads im gewählten Zeitraum."
+        rows={rows.map((l) => {
+          const acc = l.smtp_accounts as { label: string | null; host: string } | null;
+          return [
+            <span key="e" className="font-medium" title={l.error ?? undefined}>{l.email}</span>,
+            l.first_name ?? "–", l.last_name ?? "–", l.source ?? "–",
+            <LeadStatus key="s" status={l.status} at={l.scheduled_at} account={acc ? acc.label || acc.host : null} />,
+            fmtDate(l.created_at),
+          ];
+        })}
       />
+      <div className="mt-4 flex items-center justify-end gap-3 text-sm text-muted-foreground">
+        <span>Seite {page + 1} von {pages} · {data?.count ?? 0} Leads</span>
+        <Button size="sm" variant="secondary" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Zurück</Button>
+        <Button size="sm" variant="secondary" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Weiter</Button>
+      </div>
+      <LeadDialog open={open} onOpenChange={setOpen} autoDefault={settings?.auto_campaign_enabled ?? false} onSaved={refresh} />
     </>
   );
 }
