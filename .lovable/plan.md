@@ -1,57 +1,31 @@
-# Verifikation des Admin-Panels – Ergebnis und nötige Fixes
+# Die 5 offenen Punkte aus der Prüfung beheben
 
-## Prüfergebnis (nur gelesen, nichts geändert)
+## 1. Schlüssel für die Lead-Schnittstelle + Test-Button
+- **Anleitung (kommt in der Antwort):** In Lovable oben auf den Projektnamen → Settings → Secrets → „Add secret“, Name `LEADS_INGEST_KEY`, Wert = langer Zufallswert (z. B. aus einem Passwort-Generator, 40+ Zeichen). Denselben Wert bekommt dein externes System als Header `x-ingest-key`. Hinweis: Der Schlüssel gehört zu den Secrets des Lovable-Projekts, nicht zu den Edge-Function-Secrets im Supabase-Dashboard. Die App liest ihn dort, Supabase kennt ihn nicht.
+- **Button „Schnittstelle testen“ auf der Leads-Seite:** Der Server ruft die eigene Adresse `/api/public/leads-ingest` mit dem hinterlegten Schlüssel und einem Test-Lead auf (`integration-test@example.com`, Quelle „integration-test“). Angezeigt werden der Status (201 = läuft, 401 = Schlüssel fehlt/falsch) und die Antwort. Der Schlüsselwert erscheint nie im Browser.
+- Damit der Test-Lead keine echte Mail auslöst, wird er nach erfolgreichem Test direkt wieder gelöscht.
 
-**1. Auth & Routing**
-- ✓ /login mit Supabase-Anmeldung (`src/routes/login.tsx`)
-- ✓ Registrierung nur, solange kein Admin existiert: Abfrage `admin_exists()` beim Laden der Login-Seite (login.tsx Z. 37). Zusätzlich wird nur der erste Nutzer Admin (DB-Trigger `handle_new_user_role`), spätere Nutzer bekommen keinen Datenzugriff
-- ✓ /admin geschützt: `_authenticated/route.tsx` leitet ohne Sitzung zu /login um
-- ✓ Alle 5 Unterseiten vorhanden und in der Seitenleiste (`AdminSidebar.tsx`)
+## 2. Schnittstellen-Leads immer „geplant“
+- Leads von außen bekommen immer den Status „geplant“ mit Sendezeit = jetzt + Verzögerung, egal ob die Automatik an ist
+- „neu“ gibt es nur noch für manuelle Leads ohne Häkchen „Auto-Kampagne auslösen“
+- Ist die Automatik aus, bleibt alles „geplant“ und wird nicht verschickt. Nach dem Einschalten werden die fälligen Leads abgearbeitet. Das gilt auch für „Jetzt alle offenen senden“: der Button meldet dann „Automatik ist ausgeschaltet“
 
-**2. Datenbank**
-- ✓ Alle 7 Tabellen vorhanden, Spalten laut Spezifikation plus Ergänzungen (Empfänger: Vorname/Nachname/Anrede; Kampagnen: Konten-Auswahl, Rotation, letzter Fehler; Lead-Einstellungen: letzter Auto-Versand)
-- ✓ RLS überall aktiv. Abweichung (gewollt): nicht „jeder Angemeldete“, sondern nur der Admin hat Zugriff (`has_role`). SMTP-Passwörter sind für den Browser nicht lesbar
+## 3. Versand-Takt ohne externen Dienst
+- Solange irgendeine Admin-Seite offen ist, läuft automatisch einmal pro Minute ein Versand-Schritt für Kampagnen und Leads. Das ersetzt die bisherigen Einzel-Schleifen auf der Kampagnen- und Leads-Seite. Auf der geöffneten Kampagnen-Detailseite bleibt der schnellere Takt
+- Parallel-Schutz ist schon vorhanden: eine Sperr-Zeile in den Admin-Einstellungen mit Ablaufzeit (90 s). Läuft schon ein Schritt, wird der zweite übersprungen. Die Sperre wird nach jedem Schritt freigegeben. Ein Empfänger wird erst nach erfolgreichem Versand als „gesendet“ markiert, ein Lead ebenso
+- **Box „Externer Takt“ auf der Seite Automatisierung** mit Kopier-Button:
+  `curl -X POST https://project--1304ce56-0e4b-4c22-ad0a-6a07b2dd78c9.lovable.app/api/public/campaign-tick -H "x-cron-secret: DEIN_CRON_SECRET"`
+  Dazu der Hinweis: nur nötig, wenn niemand das Panel offen hat; bei cron-job.org „jede Minute“, Methode POST, Header eintragen. Der Schlüssel kommt als Header, nicht in die Adresse, weil Adressen in Logs landen
 
-**3. SMTP-Konten**
-- ✓ Anlegen/Anzeigen/Bearbeiten/Löschen, alle 9 Felder vorhanden
-- ⚠️ Testmail funktioniert, aber als Server-Funktion mit worker-mailer statt Edge Function mit nodemailer (Edge Functions sperren Port 587, nodemailer läuft dort nicht). Port 465 = TLS, sonst STARTTLS; Empfänger wird geprüft (`smtp.functions.ts`, `TestMailDialog.tsx`)
+## 4. Schlüssel-Status sichtbar
+- Auf der Seite Automatisierung: `LEADS_INGEST_KEY` hinterlegt ✓/✗, `CRON_SECRET` hinterlegt ✓/✗. Geprüft wird nur, ob ein Wert existiert, nie der Wert selbst. Nur für den Admin
 
-**4. Kampagnen**
-- ✓ Editor mit den 4 Platzhaltern, Vorschau im iframe (`PreviewDialog.tsx`)
-- ✓ Senden: Empfänger einfügen mit Prüfung, Konten-Auswahl, Bestätigung
-- ⚠️ Versand läuft schrittweise (`campaign-sender.server.ts`): 1 Mail/Sek., Rotation, Tageslimit, Status je Empfänger. Im Hintergrund aber nur mit externem Minuten-Takt, sonst nur bei geöffneter Detailseite
-- ✓ Duplizieren und Fehlgeschlagene neu senden
+## 5. Hilfe-Box zur Anmeldung
+- Auf der Seite Automatisierung (und dezent unter dem Login-Formular, falls die Anmeldung fehlschlägt): „Anmeldung klappt nicht? Im Supabase-Dashboard Authentication → Sign In / Providers → Email aktivieren; für schnelle Tests ggf. ‚Confirm email‘ ausschalten.“
 
-**5. Leads & Automatisierung**
-- ✓ Formular, Liste, Status-Abzeichen, Zeitraum-Filter, Einstellungen mit Vorlagen-Auswahl
-- ✗ Externe Lead-Schnittstelle nimmt aktuell nichts an: sie verlangt (gewollt) einen Schlüssel, der Schlüssel `LEADS_INGEST_KEY` ist aber noch nicht hinterlegt → jede Anfrage wird abgelehnt
-- ⚠️ Ist die Automatik ausgeschaltet, landen Leads aus der Schnittstelle als „neu“ statt „geplant“ (Spezifikation: immer geplant)
-- ⚠️ Auto-Versand: kein pg_cron; läuft bei geöffneter Leads-Seite, über den Button und über den Minuten-Takt. Der Takt ist noch nicht eingerichtet (App nicht veröffentlicht)
-- ✓ Anrede aus Namensliste mit Rückfall (`anrede.ts`, getestet)
-
-**6. Dashboard** – ✓ Karten, beide Diagramme, Aktivitäten-Feed
-**7. Bulk-Import** – ✓ beide Formate, Duplikat-Schutz, gemeinsame Felder (getestet)
-**8. Realtime & UX** – ✓ Live-Abo auf Leads, Tabellen seitlich scrollbar, mobile Seitenleiste, Fehlerseite, verständliche Meldungen
-**9. Edge Functions** – keine angelegt (bewusst). Stattdessen:
-
-| Name | Zweck | Schutz |
-|---|---|---|
-| sendTestMail | Testmail | angemeldet + Admin |
-| startCampaign / retryFailed / abortCampaign / runCampaignTick | Kampagnen | angemeldet + Admin |
-| createLead / sendDueLeadsNow / runLeadsTickFn | Leads | angemeldet + Admin |
-| getDashboardStats | Dashboard | angemeldet + Admin |
-| /api/public/campaign-tick | Minuten-Takt (Kampagnen + Leads) | Schlüssel `CRON_SECRET` ✓ |
-| /api/public/leads-ingest | Leads von außen | Schlüssel `LEADS_INGEST_KEY` ✗ fehlt |
-
-**Gesamt:** 20 ✓ · 4 ⚠️ · 1 ✗. Nichts davon wurde bisher angemeldet live getestet.
-
-**Kritischste Lücken**
-1. Schlüssel für die Lead-Schnittstelle fehlt → externe Leads kommen nicht an
-2. Hintergrund-Versand braucht Veröffentlichung + externen Minuten-Takt
-3. E-Mail/Passwort-Anmeldung muss im Supabase-Dashboard aktiv sein (nicht von hier prüfbar)
-
-## Fixes vor dem ersten Live-Test
-1. Schlüssel `LEADS_INGEST_KEY` über ein sicheres Eingabefeld anlegen lassen (du wählst/erzeugst ihn und gibst denselben Wert deinem externen System)
-2. Lead-Schnittstelle: Leads immer als „geplant“ anlegen (laut Spezifikation); Versand passiert trotzdem nur, wenn die Automatik an ist. Der Auto-Versand überspringt dafür geplante Leads, solange die Automatik aus ist
-3. Ein kleiner Test für die Schnittstellen-Regel (ohne Schlüssel 401, gültige Daten → geplant + Zeitpunkt = jetzt + Verzögerung)
-4. Danach du: veröffentlichen, Minuten-Takt bei cron-job.org einrichten, E-Mail-Anmeldung in Supabase prüfen
+## Technische Details
+- `leads-ingest.ts`: Status fest `scheduled`. `runLeadsTick`: bricht mit `reason: "disabled"` ab, wenn `auto_campaign_enabled` false ist.
+- `leads.functions.ts`: `testIngest` (Admin; Origin aus `getRequest()`; fetch mit Header; bei 201 Test-Lead per Admin-Client löschen; gibt `{status, body}` zurück), `getSecretStatus` (Admin; `Boolean(process.env[...])`), `runBackgroundTick` (Admin; `runTick(25000)` dann `runLeadsTick(15000)`).
+- Admin-Layout `admin.tsx`: 60-s-Intervall mit `runBackgroundTick`, solange der Tab sichtbar ist; Lead-Seiten-Schleife entfernt.
+- Automatisierungs-Seite neu: Status-Liste, Takt-Box, Hilfe-Box.
+- Test `src/test/leads-ingest.test.ts`: ohne Schlüssel → 401; gültiger Lead → Status `scheduled`, Zeitpunkt = jetzt + Verzögerung (Datenbank gemockt).
