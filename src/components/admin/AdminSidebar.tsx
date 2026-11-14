@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Bot, LayoutDashboard, Mail, Megaphone, Users } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 
 const items = [
@@ -14,6 +14,7 @@ const items = [
 ] as const;
 
 export function AdminSidebar() {
+  const { setOpenMobile } = useSidebar();
   const path = useRouterState({ select: (r) => r.location.pathname });
   return (
     <Sidebar collapsible="icon">
@@ -31,7 +32,7 @@ export function AdminSidebar() {
               {items.map((i) => (
                 <SidebarMenuItem key={i.url}>
                   <SidebarMenuButton asChild isActive={path === i.url || path.startsWith(i.url + "/")} tooltip={i.title}>
-                    <Link to={i.url}>
+                    <Link to={i.url} onClick={() => setOpenMobile(false)}>
                       <i.icon className="h-4 w-4" />
                       <span>{i.title}</span>
                     </Link>

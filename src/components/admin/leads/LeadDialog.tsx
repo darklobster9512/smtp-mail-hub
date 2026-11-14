@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +24,8 @@ export function LeadDialog({ open, onOpenChange, autoDefault, onSaved }: { open:
     setBusy(true);
     try {
       const r = await create({ data: f });
-      if (!r.ok) toast.error(r.error); else { toast.success(f.auto ? "Lead angelegt und eingeplant" : "Lead angelegt"); onSaved(); onOpenChange(false); }
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Fehler"); }
+      if (!r.ok) notifyError(r.error); else { toast.success(f.auto ? "Lead angelegt und eingeplant" : "Lead angelegt"); onSaved(); onOpenChange(false); }
+    } catch (e) { notifyError(e, "Fehler"); }
     setBusy(false);
   }
 

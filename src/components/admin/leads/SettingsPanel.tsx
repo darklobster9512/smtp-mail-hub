@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export function SettingsPanel() {
     const { error } = await supabase.from("leads_settings").update({
       auto_campaign_enabled: form.auto, delay_seconds: Math.max(0, form.delay), min_gap_seconds: Math.max(0, form.gap), template_key: form.tpl,
     }).eq("id", 1);
-    if (error) toast.error(error.message); else { toast.success("Einstellungen gespeichert"); qc.invalidateQueries({ queryKey: ["leads-settings"] }); }
+    if (error) notifyError(error); else { toast.success("Einstellungen gespeichert"); qc.invalidateQueries({ queryKey: ["leads-settings"] }); }
   }
   async function runNow() {
     setBusy(true);
@@ -64,7 +65,7 @@ export function SettingsPanel() {
       if (!r.ran) toast.info("Versand läuft bereits – bitte gleich erneut versuchen.");
       else toast.success(`${r.sent} gesendet, ${r.failed} fehlgeschlagen${r.reason === "gap" ? " (Mindest-Abstand – Rest folgt)" : r.reason === "no-account" ? " (kein Konto frei)" : ""}`);
       qc.invalidateQueries({ queryKey: ["leads"] }); qc.invalidateQueries({ queryKey: ["leads-stats"] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Fehler"); }
+    } catch (e) { notifyError(e, "Fehler"); }
     setBusy(false);
   }
 

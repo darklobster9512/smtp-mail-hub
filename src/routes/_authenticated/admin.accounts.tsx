@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useState } from "react";
 import { Pencil, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataTable, PageHeader, StatusBadge, fmtDate } from "@/components/admin/ui";
 import { AccountDialog, type Account } from "@/components/admin/accounts/AccountDialog";
+import { BulkImportDialog } from "@/components/admin/accounts/BulkImportDialog";
 import { TestMailDialog } from "@/components/admin/accounts/TestMailDialog";
 
 export const Route = createFileRoute("/_authenticated/admin/accounts")({ component: Accounts });
@@ -24,6 +26,7 @@ function Accounts() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [testing, setTesting] = useState<Account | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [deleting, setDeleting] = useState<Account | null>(null);
 
   const { data } = useQuery({
@@ -43,15 +46,18 @@ function Accounts() {
   async function confirmDelete() {
     if (!deleting) return;
     const { error } = await supabase.from("smtp_accounts").delete().eq("id", deleting.id);
-    if (error) toast.error(error.message); else { toast.success("Konto gelöscht"); refresh(); }
+    if (error) notifyError(error); else { toast.success("Konto gelöscht"); refresh(); }
     setDeleting(null);
   }
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-4">
         <PageHeader title="E-Mail-Konten" description="SMTP-Konten für den Versand." />
+        <div className="mb-6 flex gap-2">
+        <Button variant="secondary" onClick={() => setBulkOpen(true)}>Bulk-Import</Button>
         <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-4 w-4" /> Konto hinzufügen</Button>
+        </div>
       </div>
       <DataTable
         head={["Label", "Host:Port", "Absender", "Klick-Domain", "Heute", "Status", "Erstellt", ""]}
@@ -78,6 +84,7 @@ function Accounts() {
       </div>
 
       <AccountDialog open={formOpen} onOpenChange={setFormOpen} account={editing} onSaved={refresh} />
+      <BulkImportDialog open={bulkOpen} onOpenChange={setBulkOpen} onSaved={refresh} />
       <TestMailDialog account={testing} onClose={() => setTesting(null)} />
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

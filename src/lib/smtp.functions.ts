@@ -36,7 +36,8 @@ export const sendTestMail = createServerFn({ method: "POST" })
         subject: "Test",
         text: `Testmail von ${label} (${acc.host}:${acc.port}). Klick-Domain: ${acc.klick_domain || "–"}`,
         html: `<h2>Testmail</h2><p>Diese Testmail wurde erfolgreich über dein SMTP-Konto versendet.</p>
-<ul><li>Konto: ${esc(label)}</li><li>Server: ${esc(acc.host)}:${acc.port}</li><li>Absender: ${esc(fromEmail)}</li><li>Klick-Domain: ${esc(acc.klick_domain || "–")}</li></ul>`,
+<ul><li>Konto: ${esc(label)}</li><li>Server: ${esc(acc.host)}:${acc.port}</li><li>Absender: ${esc(fromEmail)}</li><li>Klick-Domain: ${esc(acc.klick_domain || "–")}</li></ul>
+${acc.klick_domain ? `<p>Link-Test: <a href="https://${esc(acc.klick_domain.replace(/^https?:\/\//, ""))}">https://${esc(acc.klick_domain.replace(/^https?:\/\//, ""))}</a></p>` : "<p>Für dieses Konto ist keine Klick-Domain eingetragen.</p>"}`,
       });
       await mailer.close();
       await supabaseAdmin.from("mail_logs").insert({ type: "info", message: `Testmail an ${data.test_email_to} über ${label} gesendet`, details: { account_id: acc.id } });

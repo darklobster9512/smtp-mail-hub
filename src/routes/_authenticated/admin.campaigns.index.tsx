@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Copy, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,15 +33,15 @@ function Campaigns() {
 
   async function duplicate(id: string) {
     const { data: c, error } = await supabase.from("campaigns").select("name, subject, html_content").eq("id", id).single();
-    if (error) { toast.error(error.message); return; }
+    if (error) { notifyError(error); return; }
     const { error: e2 } = await supabase.from("campaigns").insert({ name: `${c.name} (Kopie)`, subject: c.subject, html_content: c.html_content });
-    if (e2) toast.error(e2.message); else { toast.success("Kampagne dupliziert"); qc.invalidateQueries({ queryKey: ["campaigns"] }); }
+    if (e2) notifyError(e2); else { toast.success("Kampagne dupliziert"); qc.invalidateQueries({ queryKey: ["campaigns"] }); }
   }
 
   async function remove() {
     if (!deleting) return;
     const { error } = await supabase.from("campaigns").delete().eq("id", deleting.id);
-    if (error) toast.error(error.message); else { toast.success("Kampagne gelöscht"); qc.invalidateQueries({ queryKey: ["campaigns"] }); }
+    if (error) notifyError(error); else { toast.success("Kampagne gelöscht"); qc.invalidateQueries({ queryKey: ["campaigns"] }); }
     setDeleting(null);
   }
 

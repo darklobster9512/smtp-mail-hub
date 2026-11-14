@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
 import { startCampaign } from "@/lib/campaigns.functions";
 import { parseRecipients } from "@/lib/campaign-parse";
@@ -46,12 +47,12 @@ export function SendDialog({ campaign, onClose }: { campaign: { id: string; name
     setBusy(true);
     try {
       const res = await start({ data: { campaign_id: campaign.id, recipients_text: text, account_ids: selected } });
-      if (!res.ok) { toast.error(res.error); return; }
+      if (!res.ok) { notifyError(res.error); return; }
       toast.success(`Versand gestartet: ${res.total} Empfänger`);
       onClose();
       navigate({ to: "/admin/campaigns/$id", params: { id: res.campaign_id } });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Start fehlgeschlagen");
+      notifyError(e, "Start fehlgeschlagen");
     } finally { setBusy(false); }
   }
 

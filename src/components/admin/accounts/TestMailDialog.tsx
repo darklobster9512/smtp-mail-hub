@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { sendTestMail } from "@/lib/smtp.functions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,9 +23,9 @@ export function TestMailDialog({ account, onClose }: { account: Account | null; 
     try {
       const res = await send({ data: { account_id: account.id, test_email_to: to.trim() } });
       if (res.success) { toast.success(`Testmail an ${to.trim()} gesendet`); onClose(); }
-      else toast.error(`Fehler: ${res.error}`);
+      else notifyError(res.error, "Senden fehlgeschlagen");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Senden fehlgeschlagen");
+      notifyError(err, "Senden fehlgeschlagen");
     } finally { setBusy(false); }
   }
 

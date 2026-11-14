@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw, Square } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
 import { abortCampaign, retryFailed, runCampaignTick } from "@/lib/campaigns.functions";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ function Detail() {
           qc.invalidateQueries({ queryKey: ["campaign-recipients", id] });
           if (!res.ran || (res.sent === 0 && res.failed === 0)) await new Promise((r) => setTimeout(r, 5000));
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Versand-Schritt fehlgeschlagen");
+          notifyError(e, "Versand-Schritt fehlgeschlagen");
           await new Promise((r) => setTimeout(r, 10000));
         } finally { running.current = false; }
       }
@@ -88,11 +89,11 @@ function Detail() {
 
   async function doRetry() {
     const r = await retry({ data: { campaign_id: id } });
-    if (!r.ok) toast.error(r.error); else { toast.success("Versand wird fortgesetzt"); refresh(); }
+    if (!r.ok) notifyError(r.error); else { toast.success("Versand wird fortgesetzt"); refresh(); }
   }
   async function doAbort() {
     const r = await abort({ data: { campaign_id: id } });
-    if (!r.ok) toast.error(r.error); else { toast.success("Versand abgebrochen"); refresh(); }
+    if (!r.ok) notifyError(r.error); else { toast.success("Versand abgebrochen"); refresh(); }
   }
 
   const stats = [["Gesamt", camp.total], ["Gesendet", camp.sent], ["Fehlgeschlagen", camp.failed], ["Ausstehend", pending]] as const;

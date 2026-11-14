@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -63,7 +64,7 @@ export function AccountDialog({ open, onOpenChange, account, onSaved }: {
     const { error } = isEdit
       ? await supabase.from("smtp_accounts").update(row).eq("id", account!.id)
       : await supabase.from("smtp_accounts").insert(row);
-    if (error) { toast.error(error.message); return; }
+    if (error) { notifyError(error); return; }
     toast.success(isEdit ? "Konto gespeichert" : "Konto angelegt");
     onOpenChange(false);
     onSaved();

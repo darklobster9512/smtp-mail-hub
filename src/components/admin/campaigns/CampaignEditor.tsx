@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Info } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,7 @@ export function CampaignEditor({ campaign }: { campaign?: Initial }) {
       if (error) throw error;
       return data.id;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Speichern fehlgeschlagen");
+      notifyError(e, "Speichern fehlgeschlagen");
       return null;
     } finally { setBusy(false); setPreview((p) => p); }
   }

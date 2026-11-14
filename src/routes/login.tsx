@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { Mail } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ function LoginPage() {
       }
       navigate({ to: "/admin/overview", replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen");
+      notifyError(err, "Anmeldung fehlgeschlagen");
     } finally {
       setBusy(false);
     }

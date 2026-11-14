@@ -12,9 +12,9 @@ export function PageHeader({ title, description }: { title: string; description?
 export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNode[][]; empty: string }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-card">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[640px] text-sm">
         <thead className="border-b border-border text-left text-muted-foreground">
-          <tr>{head.map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr>
+          <tr>{head.map((h) => <th key={h} className="whitespace-nowrap px-4 py-3 font-medium">{h}</th>)}</tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (

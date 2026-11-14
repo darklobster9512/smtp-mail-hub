@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,7 +43,6 @@ function Leads() {
   const { data } = useQuery({
     queryKey: ["leads", page, range],
     placeholderData: keepPreviousData,
-    refetchInterval: 15000,
     queryFn: async () => {
       let q = supabase.from("leads").select("id, email, first_name, last_name, source, status, scheduled_at, created_at, error, smtp_accounts(label, host)", { count: "exact" });
       if (range !== "all") q = q.gte("created_at", new Date(Date.now() - (range === "24h" ? 86400e3 : 7 * 86400e3)).toISOString());
@@ -51,6 +51,18 @@ function Leads() {
       return { rows: data, count: count ?? 0 };
     },
   });
+
+  // Live updates via Supabase Realtime
+  useEffect(() => {
+    const ch = supabase.channel("leads-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, (p) => {
+        qc.invalidateQueries({ queryKey: ["leads"] });
+        qc.invalidateQueries({ queryKey: ["leads-stats"] });
+        if (p.eventType === "INSERT") toast(`Neuer Lead: ${(p.new as { email?: string }).email ?? ""}`);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
 
   // While this page is open, drive the auto-send of due leads.
   useEffect(() => {
@@ -73,7 +85,7 @@ function Leads() {
     <>
       <PageHeader title="Leads" description="Leads verwalten und automatisch anschreiben." />
       <SettingsPanel />
-      <div className="mb-4 flex items-center justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Select value={range} onValueChange={(v) => { setRange(v as Range); setPage(0); }}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
