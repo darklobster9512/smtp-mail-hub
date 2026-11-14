@@ -32,7 +32,7 @@ export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNo
 
 export function StatusBadge({ value }: { value: string }) {
   const ok = ["active", "sent", "finished", "done"].includes(value);
-  const bad = ["failed", "error", "disabled"].includes(value);
+  const bad = ["failed", "error", "disabled", "blocked"].includes(value);
   return (
     <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${ok ? "bg-primary/15 text-primary" : bad ? "bg-destructive/15 text-destructive" : "bg-secondary text-muted-foreground"}`}>
       {value}
