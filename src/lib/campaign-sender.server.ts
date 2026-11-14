@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fillTemplate } from "./campaign-parse";
+import { SmtpConnectError, createSender } from "./smtp-transport.server";
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -9,7 +10,6 @@ type Acc = {
   from_name: string | null; from_email: string | null; klick_domain: string | null;
   daily_limit: number; sent_today: number; sent_date: string | null; status: string; label: string | null;
 };
-type Mailer = { send: (m: unknown) => Promise<unknown>; close: () => Promise<unknown> };
 
 export type TickResult = { ran: boolean; reason?: string; sent: number; failed: number };
 
@@ -19,11 +19,11 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
   if (!got) return { ran: false, reason: "locked", sent: 0, failed: 0 };
   const started = Date.now();
   const result: TickResult = { ran: true, sent: 0, failed: 0 };
-  const mailers = new Map<string, Mailer>();
+  const sender = createSender();
+  let proxyFailures = 0;
   const badAccounts = new Set<string>();
 
   try {
-    const { WorkerMailer } = await import("worker-mailer");
     let lastSend = 0;
 
     while (Date.now() - started < budgetMs) {
@@ -80,31 +80,13 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
           break;
         }
 
-        let mailer = mailers.get(acc.id);
-        if (!mailer) {
-          try {
-            mailer = (await WorkerMailer.connect({
-              host: acc.host, port: acc.port, secure: acc.port === 465, startTls: acc.port !== 465,
-              credentials: { username: acc.user_email, password: acc.password ?? "" }, authType: ["plain", "login"],
-            })) as unknown as Mailer;
-            mailers.set(acc.id, mailer);
-          } catch (e) {
-            badAccounts.add(acc.id);
-            const msg = e instanceof Error ? e.message : String(e);
-            await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Verbindung zu ${acc.label || acc.host} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
-            await supabaseAdmin.from("campaigns").update({ last_error: `Verbindung zu ${acc.label || acc.host} fehlgeschlagen: ${msg}` }).eq("id", camp.id);
-            // recipient stays pending; try the next account for it
-            continue;
-          }
-        }
-
         const wait = 1000 - (Date.now() - lastSend);
         if (wait > 0) await sleep(wait);
         lastSend = Date.now();
 
         const vars = { klick_domain: acc.klick_domain, first_name: rec.first_name, last_name: rec.last_name, anrede: rec.anrede };
         try {
-          await mailer.send({
+          await sender.send(acc.id, acc, {
             from: { name: acc.from_name || acc.label || acc.host, email: acc.from_email || acc.user_email },
             to: { email: rec.email },
             subject: fillTemplate(camp.subject ?? "", vars, { html: false }),
@@ -116,9 +98,21 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
           await supabaseAdmin.from("smtp_accounts").update({ sent_today: acc.sent_today, sent_date: today() }).eq("id", acc.id);
         } catch (e) {
           const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+          if (e instanceof SmtpConnectError) {
+            // recipient stays pending; the connection (not the recipient) is the problem
+            if (e.proxyFailure) {
+              proxyFailures++;
+              await supabaseAdmin.from("mail_logs").insert({ type: "error", message: "Proxy-Verbindung fehlgeschlagen", details: { account_id: acc.id, error: msg } });
+              await supabaseAdmin.from("campaigns").update({ last_error: `Proxy-Verbindung fehlgeschlagen: ${msg}`.slice(0, 500), rr_index: rr, sent: sentInCamp, failed: failedInCamp }).eq("id", camp.id);
+              if (proxyFailures >= 3) { stop = true; break; }
+            } else {
+              badAccounts.add(acc.id);
+              await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Verbindung zu ${acc.label || acc.host} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
+              await supabaseAdmin.from("campaigns").update({ last_error: `Verbindung zu ${acc.label || acc.host} fehlgeschlagen: ${msg}` }).eq("id", camp.id);
+            }
+            continue;
+          }
           failedInCamp++; result.failed++;
-          mailers.delete(acc.id);
-          try { await mailer.close(); } catch { /* ignore */ }
           await supabaseAdmin.from("campaign_recipients").update({ status: "failed", error: msg, smtp_account_used: acc.id, sent_at: new Date().toISOString() }).eq("id", rec.id);
         }
         await supabaseAdmin.from("campaigns").update({ sent: sentInCamp, failed: failedInCamp, rr_index: rr, last_error: null }).eq("id", camp.id);
@@ -126,7 +120,7 @@ export async function runTick(budgetMs = 40000): Promise<TickResult> {
       if (stop) break;
     }
   } finally {
-    for (const m of mailers.values()) { try { await m.close(); } catch { /* ignore */ } }
+    await sender.closeAll();
     await supabaseAdmin.rpc("release_sender_lock");
   }
   return result;

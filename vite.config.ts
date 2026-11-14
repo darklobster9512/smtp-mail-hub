@@ -15,7 +15,6 @@ const devSocketsShim = {
   name: "dev-cloudflare-sockets-shim",
   apply: "serve" as const,
   enforce: "pre" as const,
-  config: () => ({ ssr: { noExternal: ["worker-mailer"] } }),
   resolveId(id: string) {
     if (id === "cloudflare:sockets") return fileURLToPath(new URL("./src/dev/cloudflare-sockets-shim.ts", import.meta.url));
     return null;

@@ -1,0 +1,2 @@
+CREATE POLICY "Server only" ON public.mail_proxies FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Server only" ON public.mail_proxy_settings FOR ALL TO service_role USING (true) WITH CHECK (true);

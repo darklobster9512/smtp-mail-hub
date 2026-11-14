@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+import { businessMail } from "./test-mail";
 
 export const sendTestMail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -20,26 +20,14 @@ export const sendTestMail = createServerFn({ method: "POST" })
 
     const fromEmail = acc.from_email || acc.user_email;
     const label = acc.label || acc.host;
+    const { createSender } = await import("./smtp-transport.server");
+    const sender = createSender();
     try {
-      const { WorkerMailer } = await import("worker-mailer");
-      const mailer = await WorkerMailer.connect({
-        host: acc.host,
-        port: acc.port,
-        secure: acc.port === 465,
-        startTls: acc.port !== 465,
-        credentials: { username: acc.user_email, password: acc.password },
-        authType: ["plain", "login"],
-      });
-      await mailer.send({
+      await sender.send(acc.id, acc, {
         from: { name: acc.from_name || label, email: fromEmail },
         to: { email: data.test_email_to },
-        subject: "Test",
-        text: `Testmail von ${label} (${acc.host}:${acc.port}). Klick-Domain: ${acc.klick_domain || "–"}`,
-        html: `<h2>Testmail</h2><p>Diese Testmail wurde erfolgreich über dein SMTP-Konto versendet.</p>
-<ul><li>Konto: ${esc(label)}</li><li>Server: ${esc(acc.host)}:${acc.port}</li><li>Absender: ${esc(fromEmail)}</li><li>Klick-Domain: ${esc(acc.klick_domain || "–")}</li></ul>
-${acc.klick_domain ? `<p>Link-Test: <a href="https://${esc(acc.klick_domain.replace(/^https?:\/\//, ""))}">https://${esc(acc.klick_domain.replace(/^https?:\/\//, ""))}</a></p>` : "<p>Für dieses Konto ist keine Klick-Domain eingetragen.</p>"}`,
+        ...businessMail(acc.from_name || label),
       });
-      await mailer.close();
       await supabaseAdmin.from("mail_logs").insert({ type: "info", message: `Testmail an ${data.test_email_to} über ${label} gesendet`, details: { account_id: acc.id } });
       return { success: true as const };
     } catch (e) {
@@ -47,5 +35,7 @@ ${acc.klick_domain ? `<p>Link-Test: <a href="https://${esc(acc.klick_domain.repl
       console.error("sendTestMail failed", msg);
       await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Testmail über ${label} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
       return { success: false as const, error: msg };
+    } finally {
+      await sender.closeAll();
     }
   });

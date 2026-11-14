@@ -32,9 +32,9 @@ function wrap(sock: net.Socket, hostname: string, readyEvent: "connect" | "secur
   return {
     readable, writable, opened, closed,
     close: async () => { sock.destroy(); },
-    startTls: () => {
+    startTls: (o?: { expectedServerHostname?: string }) => {
       if (onData) sock.off("data", onData);
-      const t = tls.connect({ socket: sock, servername: hostname });
+      const t = tls.connect({ socket: sock, servername: o?.expectedServerHostname ?? hostname });
       return wrap(t, hostname, "secureConnect");
     },
   };

@@ -1,9 +1,9 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fillTemplate } from "./campaign-parse";
 import { buildAnrede } from "./anrede";
+import { SmtpConnectError, createSender } from "./smtp-transport.server";
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
-type Mailer = { send: (m: unknown) => Promise<unknown>; close: () => Promise<unknown> };
 
 export type LeadsTickResult = { ran: boolean; reason?: string; sent: number; failed: number };
 
@@ -13,9 +13,8 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
   if (!got) return { ran: false, reason: "locked", sent: 0, failed: 0 };
   const started = Date.now();
   const res: LeadsTickResult = { ran: true, sent: 0, failed: 0 };
-  const mailers = new Map<string, Mailer>();
+  const sender = createSender();
   try {
-    const { WorkerMailer } = await import("worker-mailer");
     while (Date.now() - started < budgetMs) {
       const { data: s } = await supabaseAdmin.from("leads_settings").select("*").eq("id", 1).maybeSingle();
       if (!s) { res.reason = "no-settings"; break; }
@@ -51,15 +50,7 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
       const vars = { klick_domain: acc.klick_domain, first_name: lead.first_name, last_name: lead.last_name, anrede: buildAnrede(lead.first_name, lead.last_name) };
       await supabaseAdmin.from("leads_settings").update({ last_auto_sent_at: new Date().toISOString() }).eq("id", 1);
       try {
-        let mailer = mailers.get(acc.id);
-        if (!mailer) {
-          mailer = (await WorkerMailer.connect({
-            host: acc.host, port: acc.port, secure: acc.port === 465, startTls: acc.port !== 465,
-            credentials: { username: acc.user_email, password: acc.password ?? "" }, authType: ["plain", "login"],
-          })) as unknown as Mailer;
-          mailers.set(acc.id, mailer);
-        }
-        await mailer.send({
+        await sender.send(acc.id, acc, {
           from: { name: acc.from_name || acc.label || acc.host, email: acc.from_email || acc.user_email },
           to: { email: lead.email },
           subject: fillTemplate(tpl.subject ?? "", vars, { html: false }),
@@ -69,13 +60,11 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
         await supabaseAdmin.from("leads").update({ status: "sent", sent_at: new Date().toISOString(), smtp_account_used: acc.id, campaign_id: tpl.id, error: null }).eq("id", lead.id);
         await supabaseAdmin.from("smtp_accounts").update({ sent_today: acc.sent_today + 1, sent_date: today() }).eq("id", acc.id);
       } catch (e) {
-        const m = mailers.get(acc.id); mailers.delete(acc.id);
-        try { await m?.close(); } catch { /* ignore */ }
         await fail(e instanceof Error ? e.message : String(e), acc.id);
       }
     }
   } finally {
-    for (const m of mailers.values()) { try { await m.close(); } catch { /* ignore */ } }
+    await sender.closeAll();
     await supabaseAdmin.rpc("release_sender_lock");
   }
   return res;

@@ -254,6 +254,66 @@ export type Database = {
         }
         Relationships: []
       }
+      mail_proxies: {
+        Row: {
+          country: string | null
+          created_at: string
+          error_count: number
+          id: string
+          label: string
+          last_used_at: string | null
+          protocol: string
+          proxy_url: string
+          status: string
+          usage_count: number
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          error_count?: number
+          id?: string
+          label: string
+          last_used_at?: string | null
+          protocol: string
+          proxy_url: string
+          status?: string
+          usage_count?: number
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          error_count?: number
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          protocol?: string
+          proxy_url?: string
+          status?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
+      mail_proxy_settings: {
+        Row: {
+          enabled: boolean
+          id: number
+          rr_counter: number
+          strategy: string
+        }
+        Insert: {
+          enabled?: boolean
+          id?: number
+          rr_counter?: number
+          strategy?: string
+        }
+        Update: {
+          enabled?: boolean
+          id?: number
+          rr_counter?: number
+          strategy?: string
+        }
+        Relationships: []
+      }
       smtp_accounts: {
         Row: {
           created_at: string
@@ -336,6 +396,31 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      pick_mail_proxy: {
+        Args: never
+        Returns: {
+          country: string | null
+          created_at: string
+          error_count: number
+          id: string
+          label: string
+          last_used_at: string | null
+          protocol: string
+          proxy_url: string
+          status: string
+          usage_count: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mail_proxies"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      record_mail_proxy_result: {
+        Args: { _id: string; _ok: boolean }
+        Returns: undefined
       }
       release_sender_lock: { Args: never; Returns: undefined }
     }
