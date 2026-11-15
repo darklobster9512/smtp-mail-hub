@@ -15,6 +15,7 @@ import { AccountDialog, type Account } from "@/components/admin/accounts/Account
 import { BulkImportDialog } from "@/components/admin/accounts/BulkImportDialog";
 import { TestMailDialog } from "@/components/admin/accounts/TestMailDialog";
 import { BulkTestDialog } from "@/components/admin/accounts/BulkTestDialog";
+import { BulkKlickDomainDialog } from "@/components/admin/accounts/BulkKlickDomainDialog";
 
 export const Route = createFileRoute("/_authenticated/admin/accounts")({ component: Accounts });
 
@@ -29,6 +30,7 @@ function Accounts() {
   const [testing, setTesting] = useState<Account | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkTestOpen, setBulkTestOpen] = useState(false);
+  const [klickOpen, setKlickOpen] = useState(false);
   const [deleting, setDeleting] = useState<Account | null>(null);
 
   const { data } = useQuery({
@@ -58,6 +60,7 @@ function Accounts() {
         <PageHeader title="E-Mail-Konten" description="SMTP-Konten für den Versand." />
         <div className="mb-6 flex gap-2">
         <Button variant="secondary" onClick={() => setBulkTestOpen(true)}><Send className="h-4 w-4" /> Bulk-Test</Button>
+        <Button variant="secondary" onClick={() => setKlickOpen(true)}>Klick-Domains verteilen</Button>
         <Button variant="secondary" onClick={() => setBulkOpen(true)}>Bulk-Import</Button>
         <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-4 w-4" /> Konto hinzufügen</Button>
         </div>
@@ -93,6 +96,7 @@ function Accounts() {
       <BulkImportDialog open={bulkOpen} onOpenChange={setBulkOpen} onSaved={refresh} />
       <TestMailDialog account={testing} onClose={() => setTesting(null)} />
       <BulkTestDialog open={bulkTestOpen} onOpenChange={setBulkTestOpen} onChanged={refresh} />
+      <BulkKlickDomainDialog open={klickOpen} onOpenChange={setKlickOpen} onSaved={refresh} />
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
