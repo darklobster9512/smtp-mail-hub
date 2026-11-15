@@ -50,7 +50,7 @@ export function BulkTestDialog({ open, onOpenChange, onChanged }: { open: boolea
     setResults(Object.fromEntries(ids.map((id) => [id, { state: "wait" } as Result])));
     for (let i = 0; i < ids.length; i++) {
       if (cancel.current) break;
-      const id = ids[i];
+      const id = ids[i] as string;
       setResults((r) => ({ ...r, [id]: { state: "sending" } }));
       try {
         const res = await send({ data: { account_id: id, test_email_to: to.trim() } });
@@ -66,7 +66,7 @@ export function BulkTestDialog({ open, onOpenChange, onChanged }: { open: boolea
   async function removeFailed() {
     const ids = failed.map((a) => a.id);
     const { error } = await supabase.from("smtp_accounts").delete().in("id", ids);
-    if (error) return notifyError(error);
+    if (error) { notifyError(error); return; }
     toast.success(`${ids.length} fehlerhafte Konten entfernt`);
     setResults((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !ids.includes(k))));
     setSelected((s) => new Set([...s].filter((id) => !ids.includes(id))));
