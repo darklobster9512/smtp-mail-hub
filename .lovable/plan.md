@@ -1,16 +1,16 @@
-# Proxy-Test "xmailer": Fehler "releaseLock() ... outstanding read promises" beheben
+# Bulk-Test für E-Mail-Konten
 
-## Was passiert
-Der Test-Button ruft eine HTTPS-Abfrage (api.ipify.org) durch den Proxy auf. Nach dem Proxy-Handshake wird die Verbindung auf TLS umgeschaltet; dabei wird die Lesesperre der Leitung freigegeben. Liegt in dem Moment noch eine offene Leseanfrage vor, bricht die Laufzeit mit genau dieser Meldung ab. Die Meldung ist nicht mit "Proxy …:" versehen, kommt also nach dem erfolgreichen Proxy-Handshake – der Proxy selbst funktioniert, der Fehler liegt in unserem Code. Welche Stelle exakt auslöst (TLS-Umschaltung oder Abbruch bei Zeitüberschreitung), ist noch nicht bestätigt.
-
-## Schritte
-1. Fehler mit dem gespeicherten xmailer-Proxy lokal nachstellen und die genaue Stelle bestimmen.
-2. Proxy-Tunnel robust machen:
-   - Lesesperre nie mit offener Leseanfrage freigeben: Handshake-Lesen so umbauen, dass vor der TLS-Umschaltung garantiert nichts mehr aussteht (bzw. ausstehende Leseanfrage zuerst abschließen/abbrechen).
-   - Bei Zeitüberschreitung/Fehler Verbindung sauber schließen statt Sperre freizugeben.
-   - Gleiche Absicherung für die STARTTLS-Umschaltung beim echten Mailversand (Port 587).
-3. Verständliche Fehlermeldung, falls der Proxy z. B. Port 443 blockiert.
-4. Test ergänzen, der eine verzögerte/gesplittete Proxy-Antwort simuliert, und erneut gegen den xmailer-Proxy prüfen.
+## Was du bekommst
+- Neuer Button **„Bulk-Test“** oben auf /admin/accounts.
+- Fenster mit Liste aller Konten (Label, Typ, Absender), je mit Häkchen, plus **„Alle auswählen“** / „Keine“.
+- Feld für die Empfänger-Adresse (wird geprüft), Button **„Testmails senden“**.
+- Die Konten senden nacheinander (ca. 1 pro Sekunde, damit nichts blockiert wird). Pro Zeile siehst du live: wartet / sendet / ✓ gesendet (grün) / ✗ Fehler (rot) mit der genauen Fehlermeldung darunter.
+- Zusammenfassung am Ende: „X erfolgreich, Y fehlerhaft“.
+- Button **„Fehlerhafte entfernen (Y)“** mit Sicherheitsabfrage, löscht genau die Konten mit Fehler und aktualisiert die Tabelle.
+- Abbrechen-Button während des Laufs.
 
 ## Technisch
-- Betroffen: `src/lib/proxy-socket.server.ts` (`openTunnel` Zeile ~190, `wrap().startTls` ~150, `fetchExitIp`).
+- Neue Komponente `src/components/admin/accounts/BulkTestDialog.tsx`.
+- Nutzt den bestehenden Server-Aufruf `sendTestMail` (gleiche Business-Testmail, Proxy- und Resend-Logik) einzeln pro Konto, damit jede Antwort sofort angezeigt wird und kein Aufruf zu lang läuft.
+- Löschen über die bestehende Lösch-Logik der Konten (admin-only per RLS).
+- Einbindung in `admin.accounts.tsx` neben „Bulk-Import“.
