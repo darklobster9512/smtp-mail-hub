@@ -10,7 +10,9 @@ import { abortCampaign, retryFailed, runCampaignTick } from "@/lib/campaigns.fun
 import { Button } from "@/components/ui/button";
 import { DataTable, PageHeader, StatusBadge, fmtDate } from "@/components/admin/ui";
 
-export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({ component: Detail });
+export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
+  head: () => ({ meta: [{ title: "Kampagne – Postwerk Admin" }, { name: "description", content: "Versandstatus und Empfänger einer Kampagne." }, { property: "og:title", content: "Kampagne – Postwerk Admin" }, { property: "og:description", content: "Versandstatus und Empfänger einer Kampagne." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  component: Detail });
 
 const PAGE = 50;
 const FILTERS = ["all", "pending", "sent", "failed"] as const;

@@ -77,16 +77,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
-    // Replace these placeholders with the app's name and description when first building the app.
-    // Each content route, / included, must still set its own head(). Never add og:image or
-    // twitter:image here: every page without its own would inherit the root's preview image.
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Postwerk – SMTP-Versand" },
+      { title: "Postwerk – Zuverlässiger E-Mail-Versand" },
       { name: "description", content: "Zuverlässiger E-Mail-Versand per SMTP und API." },
       { name: "author", content: "Postwerk" },
-      { property: "og:title", content: "Postwerk – SMTP-Versand" },
+      { property: "og:title", content: "Postwerk – Zuverlässiger E-Mail-Versand" },
       { property: "og:description", content: "Zuverlässiger E-Mail-Versand per SMTP und API." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -102,7 +99,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
     ],
   }),
   shellComponent: RootShell,

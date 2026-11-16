@@ -13,7 +13,9 @@ import {
 import { DataTable, PageHeader, StatusBadge } from "@/components/admin/ui";
 import { SendDialog } from "@/components/admin/campaigns/SendDialog";
 
-export const Route = createFileRoute("/_authenticated/admin/campaigns/")({ component: Campaigns });
+export const Route = createFileRoute("/_authenticated/admin/campaigns/")({
+  head: () => ({ meta: [{ title: "Kampagnen – Postwerk Admin" }, { name: "description", content: "E-Mail-Kampagnen anlegen, starten und auswerten." }, { property: "og:title", content: "Kampagnen – Postwerk Admin" }, { property: "og:description", content: "E-Mail-Kampagnen anlegen, starten und auswerten." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  component: Campaigns });
 
 function Campaigns() {
   const qc = useQueryClient();

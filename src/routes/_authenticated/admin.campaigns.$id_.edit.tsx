@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/admin/ui";
 import { CampaignEditor } from "@/components/admin/campaigns/CampaignEditor";
 
-export const Route = createFileRoute("/_authenticated/admin/campaigns/$id_/edit")({ component: Edit });
+export const Route = createFileRoute("/_authenticated/admin/campaigns/$id_/edit")({
+  head: () => ({ meta: [{ title: "Kampagne bearbeiten – Postwerk Admin" }, { name: "description", content: "Betreff, Inhalt und Empfänger einer Kampagne anpassen." }, { property: "og:title", content: "Kampagne bearbeiten – Postwerk Admin" }, { property: "og:description", content: "Betreff, Inhalt und Empfänger einer Kampagne anpassen." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  component: Edit });
 
 function Edit() {
   const { id } = Route.useParams();

@@ -11,7 +11,7 @@ import { getDashboardStats } from "@/lib/dashboard.functions";
 const statsQuery = queryOptions({ queryKey: ["dashboard-stats"], queryFn: () => getDashboardStats(), refetchInterval: 30000 });
 
 export const Route = createFileRoute("/_authenticated/admin/overview")({
-  head: () => ({ meta: [{ title: "Übersicht – Postwerk Admin" }] }),
+  head: () => ({ meta: [{ title: "Übersicht – Postwerk Admin" }, { name: "description", content: "Versandleistung, Leads und Systemaktivität auf einen Blick." }, { property: "og:title", content: "Übersicht – Postwerk Admin" }, { property: "og:description", content: "Versandleistung, Leads und Systemaktivität auf einen Blick." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   loader: ({ context }) => { context.queryClient.ensureQueryData(statsQuery); },
   component: Overview,
   pendingComponent: OverviewSkeleton,

@@ -18,7 +18,7 @@ import { DataTable, PageHeader, StatusBadge, fmtDate } from "@/components/admin/
 import { ProxyDialog, type ProxyRow } from "@/components/admin/proxies/ProxyDialog";
 
 export const Route = createFileRoute("/_authenticated/admin/proxies")({
-  head: () => ({ meta: [{ title: "Proxys – Postwerk Admin" }, { name: "description", content: "Proxy-Pool für den SMTP-Versand verwalten." }] }),
+  head: () => ({ meta: [{ title: "Proxys – Postwerk Admin" }, { name: "description", content: "Proxy-Pool für den SMTP-Versand verwalten." }, { property: "og:title", content: "Proxys – Postwerk Admin" }, { property: "og:description", content: "Proxy-Pool für den SMTP-Versand verwalten." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Proxies,
 });
 

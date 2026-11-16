@@ -9,11 +9,11 @@ import { PageHeader } from "@/components/admin/ui";
 import { getSecretStatus } from "@/lib/leads.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/automation")({
-  head: () => ({ meta: [{ title: "Automatisierung – Postwerk Admin" }] }),
+  head: () => ({ meta: [{ title: "Automatisierung – Postwerk Admin" }, { name: "description", content: "Lead-Schnittstelle, Versandtakt und Zeitsteuerung einrichten." }, { property: "og:title", content: "Automatisierung – Postwerk Admin" }, { property: "og:description", content: "Lead-Schnittstelle, Versandtakt und Zeitsteuerung einrichten." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Automation,
 });
 
-const BASE = "https://project--1304ce56-0e4b-4c22-ad0a-6a07b2dd78c9.lovable.app";
+const BASE = typeof window !== "undefined" ? window.location.origin : "";
 const INGEST_URL = `${BASE}/api/public/leads-ingest`;
 const EXAMPLE_ONE = `{ "email": "max@beispiel.de", "first_name": "Max", "last_name": "Mustermann", "source": "landingpage" }`;
 const EXAMPLE_MANY = `{ "leads": [ { "email": "a@beispiel.de" }, { "email": "c@beispiel.de", "first_name": "Cora" } ] }`;
@@ -50,7 +50,7 @@ function Automation() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-muted-foreground">Geprüft wird nur, ob ein Wert existiert. Schlüssel anlegen: in Lovable Projektname → Settings → Secrets. Einstellungen für Leads ändern unter <Link to="/admin/leads" className="text-primary underline">Leads</Link>.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Geprüft wird nur, ob ein Wert existiert. Schlüssel werden in den Projekteinstellungen unter „Secrets“ angelegt. Einstellungen für Leads ändern unter <Link to="/admin/leads" className="text-primary underline">Leads</Link>.</p>
         </Box>
         <Box title="Lead-Schnittstelle (öffentlich, ohne Key)">
           <p className="text-sm text-muted-foreground">Externe Systeme schicken Leads per POST an diese Adresse. Sobald ein Lead eintrifft, wird er nach der eingestellten Verzögerung (und dem Mindest-Abstand) automatisch angeschrieben – ohne Cron. Bereits bekannte Adressen werden übersprungen.</p>

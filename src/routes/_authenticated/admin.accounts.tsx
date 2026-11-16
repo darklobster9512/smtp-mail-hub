@@ -17,7 +17,9 @@ import { TestMailDialog } from "@/components/admin/accounts/TestMailDialog";
 import { BulkTestDialog } from "@/components/admin/accounts/BulkTestDialog";
 import { BulkKlickDomainDialog } from "@/components/admin/accounts/BulkKlickDomainDialog";
 
-export const Route = createFileRoute("/_authenticated/admin/accounts")({ component: Accounts });
+export const Route = createFileRoute("/_authenticated/admin/accounts")({
+  head: () => ({ meta: [{ title: "E-Mail-Konten – Postwerk Admin" }, { name: "description", content: "SMTP- und Resend-Konten für den Versand verwalten und testen." }, { property: "og:title", content: "E-Mail-Konten – Postwerk Admin" }, { property: "og:description", content: "SMTP- und Resend-Konten für den Versand verwalten und testen." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  component: Accounts });
 
 const PAGE = 25;
 const COLS = "id, provider, api_key_hint, label, host, port, user_email, from_name, from_email, klick_domain, daily_limit, sent_today, status, created_at";

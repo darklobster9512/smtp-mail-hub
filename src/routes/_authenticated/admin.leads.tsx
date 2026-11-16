@@ -13,7 +13,7 @@ import { LeadDialog } from "@/components/admin/leads/LeadDialog";
 import { testIngest } from "@/lib/leads.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/leads")({
-  head: () => ({ meta: [{ title: "Leads – Postwerk Admin" }] }),
+  head: () => ({ meta: [{ title: "Leads – Postwerk Admin" }, { name: "description", content: "Leads verwalten und automatisch per E-Mail anschreiben." }, { property: "og:title", content: "Leads – Postwerk Admin" }, { property: "og:description", content: "Leads verwalten und automatisch per E-Mail anschreiben." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Leads,
 });
 
