@@ -21,7 +21,19 @@ export class ProxyConnectError extends Error {
   override name = "ProxyConnectError";
 }
 
-type State = { raw: RawSocket; reader: ReadableStreamDefaultReader<Uint8Array>; writer: WritableStreamDefaultWriter<Uint8Array>; pending: Uint8Array | null };
+type State = { raw: RawSocket; reader: ReadableStreamDefaultReader<Uint8Array>; writer: WritableStreamDefaultWriter<Uint8Array>; pending: Uint8Array | null; inflight?: Promise<unknown> | null; tlsStarted?: boolean };
+
+/** Releases reader/writer locks; waits briefly for an outstanding read instead of throwing. */
+async function releaseLocks(s: State) {
+  if (s.inflight) {
+    await Promise.race([s.inflight.catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
+  }
+  if (s.pending) throw new Error("Unerwartete Daten vor dem TLS-Start");
+  try { s.reader.releaseLock(); } catch {
+    throw new Error("Verbindung hängt beim Wechsel auf Verschlüsselung (Server sendet keine Antwort)");
+  }
+  try { s.writer.releaseLock(); } catch { /* ignore */ }
+}
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -122,8 +134,12 @@ function wrap(setup: Promise<State>, targetHost: string): RawSocket {
         const s = state;
         if (!s) throw new Error("Verbindung nicht bereit");
         if (s.pending) { const c = s.pending; s.pending = null; ctrl.enqueue(c); return; }
-        const { value, done } = await s.reader.read();
-        if (done) ctrl.close(); else if (value) ctrl.enqueue(value);
+        const p = s.reader.read();
+        s.inflight = p;
+        let r: ReadableStreamReadResult<Uint8Array>;
+        try { r = await p; } finally { if (s.inflight === p) s.inflight = null; }
+        if (s.tlsStarted) { if (r.value?.length) s.pending = r.value; return; }
+        if (r.done) ctrl.close(); else if (r.value) ctrl.enqueue(r.value);
       },
     },
     // No read-ahead: nothing is consumed from the real socket while the client is not reading,
@@ -144,11 +160,11 @@ function wrap(setup: Promise<State>, targetHost: string): RawSocket {
     closed,
     async close() { try { await ready; await (await setup).raw.close(); } catch { /* ignore */ } },
     startTls(options) {
-      return wrap(ready.then(() => {
+      return wrap(ready.then(async () => {
         const s = state;
         if (!s) throw new Error("Verbindung nicht bereit");
-        s.reader.releaseLock();
-        s.writer.releaseLock();
+        s.tlsStarted = true;
+        await releaseLocks(s);
         const secured = s.raw.startTls({ expectedServerHostname: options?.expectedServerHostname ?? targetHost });
         return { raw: secured, reader: secured.readable.getReader(), writer: secured.writable.getWriter(), pending: null };
       }), targetHost);
@@ -187,9 +203,7 @@ export function openTunnel(o: TunnelOptions): RawSocket {
     const state: State = { raw, reader, writer, pending: br.rest() };
     if (o.mode !== "on") return state;
     // TLS to the real target (certificate is checked against the target host name).
-    reader.releaseLock();
-    writer.releaseLock();
-    if (state.pending) throw new Error("Unerwartete Daten vor dem TLS-Start");
+    await releaseLocks(state);
     const secured = raw.startTls({ expectedServerHostname: o.host });
     return { raw: secured, reader: secured.readable.getReader(), writer: secured.writable.getWriter(), pending: null };
   })();

@@ -51,7 +51,6 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
       const acc = accounts[Math.floor(Math.random() * accounts.length)]!;
 
       const vars = { klick_domain: acc.klick_domain, first_name: lead.first_name, last_name: lead.last_name, anrede: buildAnrede(lead.first_name, lead.last_name) };
-      await supabaseAdmin.from("leads_settings").update({ last_auto_sent_at: new Date().toISOString() }).eq("id", 1);
       try {
         await sender.send(acc, {
           from: { name: senderName(acc), email: senderEmail(acc) },
@@ -60,6 +59,7 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
           html: fillTemplate(tpl.html_content ?? "", vars, { html: true }),
         });
         res.sent++;
+        await supabaseAdmin.from("leads_settings").update({ last_auto_sent_at: new Date().toISOString() }).eq("id", 1);
         await supabaseAdmin.from("leads").update({ status: "sent", sent_at: new Date().toISOString(), smtp_account_used: acc.id, campaign_id: tpl.id, error: null }).eq("id", lead.id);
         await supabaseAdmin.from("smtp_accounts").update({ sent_today: acc.sent_today + 1, sent_date: today() }).eq("id", acc.id);
       } catch (e) {
@@ -75,6 +75,7 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
         if (e instanceof ResendError && e.kind === "rate") { skip.add(acc.id); continue; }
         if (e instanceof SmtpConnectError) {
           skip.add(acc.id);
+          await supabaseAdmin.from("leads").update({ error: `${accName}: ${msg}`.slice(0, 500) }).eq("id", lead.id);
           await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Verbindung zu ${accName} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
           continue;
         }
