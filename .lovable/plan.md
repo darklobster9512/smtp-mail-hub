@@ -18,7 +18,11 @@ pm2 save
 pm2 startup        # ausgegebenen Befehl einmal ausfuehren
 ```
 
-## Nginx anpassen
+## Nginx anpassen (Ursache fuer 502 Bad Gateway)
+Die App hoert jetzt nur noch auf 127.0.0.1, Nginx zeigt aber noch auf 131.123.34.73:8080. Darum 502.
+```text
+sed -i 's#proxy_pass http://131.123.34.73:8080;#proxy_pass http://127.0.0.1:8080;#' /etc/nginx/sites-available/shopmanagement.lol
+```
 In `/etc/nginx/sites-available/shopmanagement.lol`:
 ```text
 proxy_pass http://127.0.0.1:8080;
