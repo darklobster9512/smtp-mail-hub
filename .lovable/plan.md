@@ -1,20 +1,24 @@
-# Warum "gesendet", aber keine Mail ankommt
+# Lead "pitzgertraude@gmail.com" bleibt auf "Geplant"
 
-## Was feststeht
-- Der Lead an igor.maier@web.de ging um 10:12 über das Konto support@aqar-chat.com (Hostinger, Port 465) raus.
-- "Gesendet" heißt: Hostinger hat die Mail angenommen. Was danach passiert, sieht die App aktuell nicht.
-- Die Domain aqar-chat.com hat SPF und DMARC. Eine Hostinger-DKIM-Signatur habe ich unter dem üblichen Namen nicht gefunden. web.de ist streng und verwirft solche Mails oft stillschweigend oder schickt eine Rückläufer-Mail.
+## Was los ist
+- Der Lead kam um 11:21 rein und sollte um 11:22 raus.
+- Seitdem schlägt jeder Versuch fehl, über alle Konten (insqar, aqar-chat, mwe-das, visolutions, ...).
+- Der Fehler ist immer derselbe: "Cannot call releaseLock() on a reader with outstanding read promises".
+- Er kommt aus unserer App, nicht vom Mailserver. Er passiert beim Wechsel auf die verschlüsselte Verbindung über den Proxy (STARTTLS, Port 587).
+- Mein letzter Fix hat nur unsere eigene Proxy-Schicht abgesichert. Die Stelle im Mail-Baustein selbst, die beim Wechsel ebenfalls die Leseverbindung freigibt, wirft weiter.
+- Weil jeder Versuch scheitert, wird der Lead nie "fehlgeschlagen" und bleibt ewig "Geplant".
 
-## Was du sofort prüfen kannst
-1. Melde dich im Postfach support@aqar-chat.com an (Hostinger Webmail) und schau nach einer Rückläufer-Mail ("Undelivered", "Mail delivery failed") – darin steht der genaue Grund.
-2. Schick über Bulk-Test dieselbe Testmail an eine Gmail-Adresse. Kommt sie dort an, liegt es an web.de.
-3. In Hostinger unter E-Mails → DNS/DKIM prüfen, ob DKIM aktiv ist.
+## Was ich ändere
+1. **Fehler nachstellen:** ein lokaler Test mit nachgebautem Proxy und Mailserver mit STARTTLS (Port 587) und direktem TLS (Port 465), genau wie auf deinem Server (Node 22).
+2. **Wechsel auf Verschlüsselung reparieren:** im Mail-Baustein den alten Lesekanal sauber beenden statt hart freizugeben, damit kein offener Lesevorgang mehr stört. Die Proxy-Verbindung übergibt die Leitung erst, wenn nichts mehr gelesen wird.
+3. **Kein endloses "Geplant":** nach 5 gescheiterten Runden wird der Lead auf "Fehlgeschlagen" gesetzt, mit Fehlertext. Du kannst ihn dann neu planen.
+4. **Erneut versuchen:** Button pro Lead, um einen fehlgeschlagenen Lead wieder einzuplanen.
+5. Test laufen lassen, danach einen echten Versand über den xmailer-Proxy prüfen.
 
-## Was ich in der App einbaue
-- Die Antwort des Mailservers (z. B. "250 OK queued as …") wird beim Lead und im Aktivitätsprotokoll gespeichert und in der Leads-Tabelle beim Status angezeigt. Damit hast du einen Nachweis für den Support von Hostinger.
-- Auf /admin/accounts eine Schaltfläche "Zustellbarkeit prüfen" pro Konto: zeigt, ob SPF, DKIM und DMARC der Absender-Domain gesetzt sind (grün/rot mit kurzer Erklärung).
+## Danach auf deinem Server
+`cd ~/smtp-mail-hub && git pull && npm install && pm2 restart smtp-mail-hub`
 
 ## Technische Details
-- Vendored worker-mailer: letzte SMTP-Antwort nach DATA zurückgeben; `mail-send.server.ts` reicht sie als `serverReply` durch (Resend: message id).
-- Neue Spalte `leads.server_reply text` + Eintrag in `mail_logs` vom Typ info.
-- DNS-Prüfung per Server-Funktion über DNS-over-HTTPS (cloudflare-dns.com), DKIM mit gängigen Selektoren (hostingermail1/2, default, google, selector1/2, resend).
+- Betroffen: `src/lib/vendor/worker-mailer.mjs` (`tls()`: `reader.cancel()`/try-catch statt `releaseLock()`), `src/lib/proxy-socket.server.ts` (Wrapper-Readable: ausstehendes Pull beim `startTls` auflösen), `src/lib/leads-sender.server.ts` (Versuchszähler, Status `failed`).
+- Neue Spalte `leads.attempts int default 0` per Migration.
+- Test: `src/test/proxy-starttls.test.ts` mit Node-Shim, Fake-HTTP-CONNECT/SOCKS5-Proxy und Fake-SMTP mit STARTTLS.
