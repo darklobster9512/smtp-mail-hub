@@ -17,3 +17,9 @@ Ersetze DEIN_KEY durch den Service-Role-Key aus deinem Supabase-Projekt (Project
 Dann kannst du dir selbst irgendeinen langen Zufallswert ausdenken, ihn als zweite Zeile `CRON_SECRET=...` eintragen und denselben Wert beim Timer angeben. Das ist optional.
 
 ## Am Code ändert sich nichts.
+
+## Wo finde ich den Service-Role-Key?
+
+Wenn du ein eigenes Supabase-Konto hast: supabase.com/dashboard öffnen -> Projekt `htghprryiftbjfgieyag` -> Project Settings -> API Keys -> `service_role` (oder `secret`-Key) -> "Reveal" -> kopieren.
+
+Läuft die Datenbank über Lovable Cloud (kein eigenes Supabase-Konto), wird dieser Key nicht angezeigt. Dann geht der Betrieb auf einem eigenen Server nur mit einem eigenen Supabase-Projekt.
