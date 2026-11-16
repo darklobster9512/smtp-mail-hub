@@ -22,8 +22,9 @@ ufw allow OpenSSH && ufw allow 'Nginx Full' && ufw --force enable
 mkdir -p /var/www && cd /var/www
 git clone https://github.com/darklobster9512/smtp-mail-hub.git
 cd smtp-mail-hub
-nano .env          # SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY,
-                   # VITE_SUPABASE_*, CRON_SECRET
+# .env kommt schon ueber GitHub mit (Supabase-Adresse + oeffentlicher Schluessel).
+# Nur die 2 geheimen Werte einmalig per Befehl setzen (nicht in GitHub!):
+printf 'SUPABASE_SERVICE_ROLE_KEY=DEIN_KEY\nCRON_SECRET=DEIN_SECRET\n' > .env.production.local
 bun install
 bun run build:node
 PORT=3000 pm2 start .output/server/index.mjs --name smtp-mail-hub
@@ -38,6 +39,9 @@ certbot --nginx -d shopmanagement.lol -d www.shopmanagement.lol
 cd /var/www/smtp-mail-hub && git pull && bun install && bun run build:node && pm2 restart smtp-mail-hub
 ```
 Dazu kommt die fertige nginx-Datei und eine Anleitung, woher du den Service-Role-Key nimmst.
+
+## Warum nicht alles ueber GitHub
+Die `.env` mit Supabase-Adresse und oeffentlichem Schluessel liegt bereits im Repo und wird mitgeklont. Der Service-Role-Key gibt vollen Zugriff auf die Datenbank inkl. SMTP-Passwoertern. Im Repo waere er fuer jeden mit Zugriff lesbar. Deshalb einmalig auf dem Server per einem Befehl, ohne Editor. `.env.production.local` ist per `*.local` von Git ausgeschlossen und bleibt bei `git pull` erhalten.
 
 ## Voraussetzungen bei dir
 - DNS: A-Record für `shopmanagement.lol` und `www` auf die VPS-IP.
