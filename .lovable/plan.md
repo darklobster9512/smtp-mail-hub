@@ -23,3 +23,5 @@ Dann kannst du dir selbst irgendeinen langen Zufallswert ausdenken, ihn als zwei
 Wenn du ein eigenes Supabase-Konto hast: supabase.com/dashboard öffnen -> Projekt `htghprryiftbjfgieyag` -> Project Settings -> API Keys -> `service_role` (oder `secret`-Key) -> "Reveal" -> kopieren.
 
 Läuft die Datenbank über Lovable Cloud (kein eigenes Supabase-Konto), wird dieser Key nicht angezeigt. Dann geht der Betrieb auf einem eigenen Server nur mit einem eigenen Supabase-Projekt.
+
+Neue Supabase-Oberfläche: Den Key findest du unter "Secret keys" (beginnt mit `sb_secret_`). Diesen als DEIN_KEY eintragen. Der Legacy-`service_role`-Key ginge auch, wird aber 2027 abgeschaltet.
