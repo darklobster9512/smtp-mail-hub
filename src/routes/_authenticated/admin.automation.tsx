@@ -1,3 +1,4 @@
+import { PUBLIC_BASE_URL } from "@/lib/site";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/admin/automation")({
   component: Automation,
 });
 
-const BASE = typeof window !== "undefined" ? window.location.origin : "";
+const BASE = PUBLIC_BASE_URL;
 const INGEST_URL = `${BASE}/api/public/leads-ingest`;
 const EXAMPLE_ONE = `{ "email": "max@beispiel.de", "first_name": "Max", "last_name": "Mustermann", "source": "landingpage" }`;
 const EXAMPLE_MANY = `{ "leads": [ { "email": "a@beispiel.de" }, { "email": "c@beispiel.de", "first_name": "Cora" } ] }`;

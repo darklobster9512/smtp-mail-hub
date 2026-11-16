@@ -28,5 +28,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  vite: { plugins: [devSocketsShim] },
+  vite: {
+    plugins: [devSocketsShim],
+    server: { allowedHosts: ["shopmanagement.lol", "www.shopmanagement.lol"] },
+    preview: { allowedHosts: ["shopmanagement.lol", "www.shopmanagement.lol"] },
+  },
 });
