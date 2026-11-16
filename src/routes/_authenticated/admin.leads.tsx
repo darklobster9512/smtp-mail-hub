@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,11 @@ function Leads() {
     toast.success(`${ids.length} Lead${ids.length > 1 ? "s" : ""} gelöscht`);
     setSel(new Set()); refresh();
   }
+  async function retry(id: string) {
+    const { error } = await supabase.from("leads").update({ status: "scheduled", scheduled_at: new Date().toISOString(), attempts: 0, error: null, sent_at: null }).eq("id", id);
+    if (error) { toast.error(`Neu einplanen fehlgeschlagen: ${error.message}`); return; }
+    toast.success("Lead neu eingeplant"); refresh();
+  }
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const allSel = rows.length > 0 && rows.every((r) => sel.has(r.id));
   const pages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE));
@@ -125,7 +130,7 @@ function Leads() {
             l.first_name ?? "–", l.last_name ?? "–", l.source ?? "–",
             <LeadStatus key="s" status={l.status} at={l.scheduled_at} account={acc ? acc.label || acc.host || "Resend" : null} />,
             fmtDate(l.created_at),
-            <Button key="d" size="icon" variant="ghost" aria-label="Lead löschen" onClick={() => del([l.id])}><Trash2 className="h-4 w-4 text-destructive" /></Button>,
+            <div key="d" className="flex justify-end">{l.status === "failed" && <Button size="icon" variant="ghost" aria-label="Erneut versuchen" title="Erneut versuchen" onClick={() => retry(l.id)}><RotateCcw className="h-4 w-4" /></Button>}<Button size="icon" variant="ghost" aria-label="Lead löschen" onClick={() => del([l.id])}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>,
           ];
         })}
       />

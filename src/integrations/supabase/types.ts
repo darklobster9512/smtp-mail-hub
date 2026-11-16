@@ -145,6 +145,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          attempts: number
           campaign_id: string | null
           created_at: string
           email: string
@@ -159,6 +160,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          attempts?: number
           campaign_id?: string | null
           created_at?: string
           email: string
@@ -173,6 +175,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          attempts?: number
           campaign_id?: string | null
           created_at?: string
           email?: string

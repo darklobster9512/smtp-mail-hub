@@ -9,6 +9,9 @@ const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/B
 
 export type LeadsTickResult = { ran: boolean; reason?: string; sent: number; failed: number };
 
+/** A lead is marked failed after this many failed connection attempts. */
+export const MAX_LEAD_ATTEMPTS = 10;
+
 /** Sends due leads (status scheduled, scheduled_at <= now) respecting min_gap_seconds. Random account per lead. */
 export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
   const { data: got } = await supabaseAdmin.rpc("claim_sender_lock", { _ttl_seconds: 90 });
@@ -75,8 +78,14 @@ export async function runLeadsTick(budgetMs = 15000): Promise<LeadsTickResult> {
         if (e instanceof ResendError && e.kind === "rate") { skip.add(acc.id); continue; }
         if (e instanceof SmtpConnectError) {
           skip.add(acc.id);
-          await supabaseAdmin.from("leads").update({ error: `${accName}: ${msg}`.slice(0, 500) }).eq("id", lead.id);
+          const attempts = ((lead as { attempts?: number }).attempts ?? 0) + 1;
+          (lead as { attempts?: number }).attempts = attempts;
           await supabaseAdmin.from("mail_logs").insert({ type: "error", message: `Verbindung zu ${accName} fehlgeschlagen`, details: { account_id: acc.id, error: msg } });
+          if (attempts >= MAX_LEAD_ATTEMPTS) {
+            await supabaseAdmin.from("leads").update({ attempts, status: "failed", error: `Nach ${attempts} Versuchen aufgegeben. Letzter Fehler: ${accName}: ${msg}`.slice(0, 500) }).eq("id", lead.id);
+            break;
+          }
+          await supabaseAdmin.from("leads").update({ attempts, error: `${accName}: ${msg}`.slice(0, 500) }).eq("id", lead.id);
           continue;
         }
         await fail(e instanceof Error ? e.message : String(e), acc.id);
