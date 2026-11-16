@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,17 @@ function Leads() {
   }, [qc]);
 
   const rows = data?.rows ?? [];
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  useEffect(() => { setSel(new Set()); }, [page, range]);
+  async function del(ids: string[]) {
+    if (!ids.length || !confirm(`${ids.length} Lead${ids.length > 1 ? "s" : ""} endgültig löschen?`)) return;
+    const { error } = await supabase.from("leads").delete().in("id", ids);
+    if (error) { toast.error(`Löschen fehlgeschlagen: ${error.message}`); return; }
+    toast.success(`${ids.length} Lead${ids.length > 1 ? "s" : ""} gelöscht`);
+    setSel(new Set()); refresh();
+  }
+  const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allSel = rows.length > 0 && rows.every((r) => sel.has(r.id));
   const pages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE));
   const refresh = () => { qc.invalidateQueries({ queryKey: ["leads"] }); qc.invalidateQueries({ queryKey: ["leads-stats"] }); };
 
@@ -88,7 +99,8 @@ function Leads() {
             <SelectItem value="all">Alle</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {sel.size > 0 && <Button variant="destructive" onClick={() => del([...sel])}><Trash2 className="h-4 w-4" /> Ausgewählte löschen ({sel.size})</Button>}
           <Button variant="secondary" disabled={testing} onClick={runTest}>{testing ? "Teste…" : "Schnittstelle testen"}</Button>
           <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Lead hinzufügen</Button>
         </div>
@@ -103,15 +115,17 @@ function Leads() {
         </div>
       )}
       <DataTable
-        head={["E-Mail", "Vorname", "Nachname", "Quelle", "Status", "Erstellt"]}
+        head={[<input key="a" type="checkbox" aria-label="Alle auswählen" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(rows.map((r) => r.id)))} />, "E-Mail", "Vorname", "Nachname", "Quelle", "Status", "Erstellt", ""]}
         empty="Keine Leads im gewählten Zeitraum."
         rows={rows.map((l) => {
           const acc = l.smtp_accounts as { label: string | null; host: string | null } | null;
           return [
+            <input key="c" type="checkbox" aria-label="Auswählen" checked={sel.has(l.id)} onChange={() => toggle(l.id)} />,
             <span key="e" className="font-medium" title={l.error ?? undefined}>{l.email}</span>,
             l.first_name ?? "–", l.last_name ?? "–", l.source ?? "–",
             <LeadStatus key="s" status={l.status} at={l.scheduled_at} account={acc ? acc.label || acc.host || "Resend" : null} />,
             fmtDate(l.created_at),
+            <Button key="d" size="icon" variant="ghost" aria-label="Lead löschen" onClick={() => del([l.id])}><Trash2 className="h-4 w-4 text-destructive" /></Button>,
           ];
         })}
       />

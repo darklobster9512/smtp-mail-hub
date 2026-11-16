@@ -22,7 +22,7 @@ export function EmptyState({ text }: { text: string }) {
   );
 }
 
-export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNode[][]; empty: string }) {
+export function DataTable({ head, rows, empty }: { head: ReactNode[]; rows: ReactNode[][]; empty: string }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full min-w-[640px] text-sm tabular-nums">
