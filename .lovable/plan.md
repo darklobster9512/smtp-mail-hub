@@ -1,27 +1,6 @@
-# Server-Schlüssel ohne Cron-Secret
+# Leads von igor.maier60@web.de entfernen
 
-Du brauchst kein Cron-Secret. Es wird nur für einen optionalen externen Timer genutzt, und der ist hier nicht im Einsatz: Kampagnen laufen, solange das Admin-Panel offen ist, und Leads werden automatisch über die Lead-Schnittstelle verschickt.
-
-## Befehl auf dem Server (nur der Service-Role-Key)
-
-```text
-cd ~/smtp-mail-hub
-printf 'SUPABASE_SERVICE_ROLE_KEY=DEIN_KEY\n' > .env.local
-pm2 restart smtp-mail-hub
-```
-
-Ersetze DEIN_KEY durch den Service-Role-Key aus deinem Supabase-Projekt (Project Settings -> API -> service_role).
-
-## Falls du später doch einen externen Timer willst
-
-Dann kannst du dir selbst irgendeinen langen Zufallswert ausdenken, ihn als zweite Zeile `CRON_SECRET=...` eintragen und denselben Wert beim Timer angeben. Das ist optional.
-
-## Am Code ändert sich nichts.
-
-## Wo finde ich den Service-Role-Key?
-
-Wenn du ein eigenes Supabase-Konto hast: supabase.com/dashboard öffnen -> Projekt `htghprryiftbjfgieyag` -> Project Settings -> API Keys -> `service_role` (oder `secret`-Key) -> "Reveal" -> kopieren.
-
-Läuft die Datenbank über Lovable Cloud (kein eigenes Supabase-Konto), wird dieser Key nicht angezeigt. Dann geht der Betrieb auf einem eigenen Server nur mit einem eigenen Supabase-Projekt.
-
-Neue Supabase-Oberfläche: Den Key findest du unter "Secret keys" (beginnt mit `sb_secret_`). Diesen als DEIN_KEY eintragen. Der Legacy-`service_role`-Key ginge auch, wird aber 2027 abgeschaltet.
+- Unter Leads werden alle Einträge mit der Adresse igor.maier60@web.de gelöscht (Groß-/Kleinschreibung egal).
+- Andere Leads, Kampagnen und Konten bleiben unverändert.
+- Löschen lässt sich nicht rückgängig machen.
+- Am Code ändert sich nichts.
